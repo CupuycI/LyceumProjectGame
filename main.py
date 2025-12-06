@@ -1,4 +1,4 @@
-import arcade
+from Classes import *
 
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1280
@@ -6,11 +6,97 @@ SCREEN_TITLE = "RUC\nResponding to an urgent call"
 
 class MainWindow(arcade.Window):
     def __init__(self, width, height, title):
-        super().__init__(width, height, title)
-        arcade.set_background_color(arcade.color.BLACK)
+        super().__init__(width, height, title, resizable=True, fullscreen=True)
+        arcade.set_background_color(arcade.color.WHITE)
+        self.buttons_lst = []
+        self.status = "MainMenu"
+        self.was = ""
+        self.level = ""
+        self.game_size = ""
 
     def on_draw(self):
         self.clear()
+        if self.status == "MainMenu":
+            if self.was != self.status:
+                self.buttons_lst = [MyButton(self, SCREEN_WIDTH / 2.3, SCREEN_HEIGHT / 1.55,
+                                             "На вызов", (lambda: change_status(self, "ChoosingLevel")),
+                                             (125, 125, 125), (255, 0, 0), 50),
+                                    MyButton(self, SCREEN_WIDTH / 2.35, SCREEN_HEIGHT / 2,
+                                             "Настройки", (lambda: change_status(self, "Settings")),
+                                             (125, 125, 125), (255, 0, 0), 50),
+                                    MyButton(self, SCREEN_WIDTH / 2.2, SCREEN_HEIGHT / 2.7,
+                                             "Выход", (lambda: self.close()),
+                                             (125, 125, 125), (255, 0, 0), 50)
+                                    ]
+                self.was = self.status
+
+            set_background("MainMenuBackground.jpg", SCREEN_WIDTH, SCREEN_HEIGHT)
+            for btn in self.buttons_lst:
+                btn.draw()
+
+        elif self.status == "ChoosingLevel":
+            if self.was != self.status:
+                self.buttons_lst = [MyButton(self, SCREEN_WIDTH / 8, SCREEN_HEIGHT / 6, "Лёгкий",
+                                             (lambda: change_status(self, "ChoosingSize", "Easy")),
+                                             (125, 125, 125), (0, 255, 0), 40),
+                                    MyButton(self, SCREEN_WIDTH / 2.25, SCREEN_HEIGHT / 6, "Средний",
+                                             (lambda: change_status(self, "ChoosingSize", "Middle")),
+                                             (125, 125, 125), (255, 192, 0), 40),
+                                    MyButton(self, SCREEN_WIDTH / 1.275, SCREEN_HEIGHT / 6, "Сложный",
+                                             (lambda: change_status(self, "ChoosingSize", "Hard")),
+                                             (125, 125, 125), (255, 30, 30), 40),
+                                    MyButton(self, SCREEN_WIDTH / 25, SCREEN_HEIGHT / 1.25, "Назад",
+                                             (lambda: change_status(self, "MainMenu")),
+                                             (125, 125, 125), (30, 30, 255), 30)]
+                self.was = self.status
+
+            set_background("ChooseLevelBackground.jpg", SCREEN_WIDTH, SCREEN_HEIGHT)
+            text = arcade.Text("Уровень сложности", SCREEN_WIDTH / 4.5, SCREEN_HEIGHT / 1.4, (255, 255, 255),
+                               100)
+            text.draw()
+            set_image("ChooseEasyLevel.jpg", SCREEN_WIDTH / 6, SCREEN_HEIGHT / 2.25)
+            set_image("ChooseMiddleLevel.jpg", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2.25)
+            set_image("ChooseHardLevel.jpg", SCREEN_WIDTH / 1.2, SCREEN_HEIGHT / 2.25)
+            for btn in self.buttons_lst:
+                btn.draw()
+
+        elif self.status == "ChoosingSize":
+            if self.was != self.status:
+                self.buttons_lst = [MyButton(self, SCREEN_WIDTH / 25, SCREEN_HEIGHT / 1.25, "Назад",
+                                             (lambda: change_status(self, "ChoosingLevel")),
+                                             (125, 125, 125), (30, 30, 255), 30),
+                                    MyButton(self, SCREEN_WIDTH / 8, SCREEN_HEIGHT / 6, "Малый",
+                                             (lambda: change_status(self, "Game", "Small")),
+                                             (125, 125, 125), (0, 255, 0), 40),
+                                    MyButton(self, SCREEN_WIDTH / 2.25, SCREEN_HEIGHT / 6, "Средний",
+                                             (lambda: change_status(self, "Game", "Middle")),
+                                             (125, 125, 125), (255, 192, 0), 40),
+                                    MyButton(self, SCREEN_WIDTH / 1.275, SCREEN_HEIGHT / 6, "Большой",
+                                             (lambda: change_status(self, "Game", "Big")),
+                                              (125, 125, 125), (255, 30, 30), 40)]
+                self.was = self.status
+
+            set_background("ChooseLevelBackground.jpg", SCREEN_WIDTH, SCREEN_HEIGHT)
+            text = arcade.Text("Размер локации", SCREEN_WIDTH / 3.75, SCREEN_HEIGHT / 1.4, (255, 255, 255),
+                               100)
+            text.draw()
+            set_image("ChooseSmallSize.jpg", SCREEN_WIDTH / 6, SCREEN_HEIGHT / 2.25)
+            set_image("ChooseMiddleSize.jpg", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2.25)
+            set_image("ChooseBigSize.jpg", SCREEN_WIDTH / 1.2, SCREEN_HEIGHT / 2.25)
+            for btn in self.buttons_lst:
+                btn.draw()
+
+
+
+
+    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
+        for btn in self.buttons_lst:
+            btn.on_hover_update(x, y)
+
+    def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            for btn in self.buttons_lst:
+                btn.on_press()
 
 
 def setup_game(width, height, title):
