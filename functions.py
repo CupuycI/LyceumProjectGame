@@ -4,12 +4,17 @@ import arcade
 
 
 def get_path(file_name):
-    if file_name.endswith(".jpg"):
+    directory = ""
+    if file_name.endswith(".jpg") or file_name.endswith(".png"):
         directory = "pictures"
     elif file_name.endswith(".wav") or file_name.endswith(".mp3"):
         directory = "sounds"
-    return os.path.join(os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))), directory),
-                        file_name)
+
+    if directory:
+        return os.path.join(os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))), directory),
+                            file_name)
+
+    return os.path.join(getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))), file_name)
 
 
 def get_my_rect(center_x, center_y, width, height):
@@ -18,7 +23,7 @@ def get_my_rect(center_x, center_y, width, height):
 
 def change_status(wd, status, value=False):
     wd.status = status
-    if status == "ChoosingLevel" and value:
+    if status == "ChoosingSize" and value:
         wd.level = value
         if wd.game_size:
             wd.game_size = ""
@@ -26,7 +31,7 @@ def change_status(wd, status, value=False):
     elif status == "MainMenu" and wd.level:
         wd.level = ""
 
-    elif status == "ChoosingSize" and value:
+    elif status == "Game" and value:
         wd.game_size = value
 
 

@@ -1,5 +1,6 @@
-from Classes import *
+from pyglet.event import EVENT_HANDLE_STATE
 
+from Classes import *
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1280
 SCREEN_TITLE = "RUC\nResponding to an urgent call"
@@ -7,7 +8,7 @@ SCREEN_TITLE = "RUC\nResponding to an urgent call"
 class MainWindow(arcade.Window):
     def __init__(self, width, height, title):
         super().__init__(width, height, title, resizable=True, fullscreen=True)
-        arcade.set_background_color(arcade.color.WHITE)
+        arcade.set_background_color(arcade.color.GRAY_BLUE)
         self.buttons_lst = []
         self.status = "MainMenu"
         self.was = ""
@@ -86,17 +87,70 @@ class MainWindow(arcade.Window):
             for btn in self.buttons_lst:
                 btn.draw()
 
+        elif self.status == "Game":
+            if "Pause" != self.was != "Game":
+                self.was = self.status
+                self.keys = []
+                self.game_location = Location(self, self.game_size)
+                self.player = Detective(self, 500, self.height / 2, self.game_location)
+                self.sprite_lst = arcade.SpriteList()
+                self.sprite_lst.append(self.player.sprite)
 
+            self.game_location.draw()
+            self.sprite_lst.draw()
 
+        elif self.status == "Pause":
+            if self.was != self.status:
+                self.buttons_lst = [MyButton(self, SCREEN_WIDTH / 2.42, SCREEN_HEIGHT / 1.55,
+                                             "Продолжить", (lambda: change_status(self, "Game")),
+                                             (125, 125, 125), (255, 0, 0), 50),
+                                    MyButton(self, SCREEN_WIDTH / 2.35, SCREEN_HEIGHT / 2,
+                                             "Настройки", (lambda: change_status(self, "Settings")),
+                                             (125, 125, 125), (0, 0, 255), 50),
+                                    MyButton(self, SCREEN_WIDTH / 2.23, SCREEN_HEIGHT / 2.7,
+                                             "На базу", (lambda: change_status(self, "MainMenu")),
+                                             (125, 125, 125), (0, 0, 255), 50)
+                                    ]
+                self.was = self.status
+
+            for btn in self.buttons_lst:
+                btn.draw()
+
+    def on_update(self, delta_time: float):
+        try:
+            if self.status == "Game":
+                self.player.update(self.keys, delta_time)
+                self.game_location.update(delta_time)
+
+        except AttributeError:
+            pass
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         for btn in self.buttons_lst:
             btn.on_hover_update(x, y)
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
+        if self.status == "Game" and self.player.item == self.player.items[0]:
+            bullet = Bullet(self.player.sprite.center_x, self.player.sprite.center_y, 2500, x, y)
+            self.game_location.bullets_sprites.append(bullet.sprite)
+            self.game_location.bullets.append(bullet)
         if button == arcade.MOUSE_BUTTON_LEFT:
             for btn in self.buttons_lst:
                 btn.on_press()
+
+    def on_key_press(self, symbol: int, modifiers: int):
+        if "Pause" != self.status != "Game":
+            return
+        if symbol == arcade.key.ESCAPE:
+            self.status = "Pause" if self.status != "Pause" else "Game"
+            return
+        self.keys.append(symbol)
+
+    def on_key_release(self, symbol: int, modifiers: int):
+        if not self.status == "Game" or symbol == arcade.key.ESCAPE:
+            return
+
+        del self.keys[self.keys.index(symbol)]
 
 
 def setup_game(width, height, title):
