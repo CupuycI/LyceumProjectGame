@@ -158,6 +158,7 @@ class Location:
         self.spawns_objects = arcade.SpriteList()
         self.create_spawn()
         self.objects = arcade.SpriteList()
+        self.interior = arcade.SpriteList()
         self.floor = arcade.SpriteList()
         self.create_location()
         self.bullets = []
@@ -172,12 +173,11 @@ class Location:
         with open(get_path("locations.json"), "r", encoding="utf8") as f:
             self.locations = json.load(f)
 
-        height = self.wd.height / 2
+        height = self.wd.height / 1.5
         wd = arcade.Sprite(get_path("HWall.png"), (1, 1), 0, 0).width
         ht = arcade.Sprite(get_path("VWall.png"), (1, 1), 0, 0).height
         location = choice(self.locations[self.size])
-        mx_wd = 0
-        width = self.wd.width / 2
+        width = self.wd.width / 4
         location2 = []
         for i in location[:-1]:
             if i == "hallway":
@@ -186,7 +186,7 @@ class Location:
 
             location2.append([choice(self.locations[size + "_rooms"]) for size in i])
 
-        mx_wd = len(max([''.join([k.split('\n')[0] for k in i]) for i in location2 if i != "hallway"], key=len)) * 3 - 1
+        mx_wd = len(max([''.join([k[0].split('\n')[0] for k in i]) for i in location2 if i != "hallway"], key=len)) * 3 - 1
         for ind1, rooms in enumerate(location2):
             # if i == "hallway":
             #     height -= ht
@@ -201,42 +201,55 @@ class Location:
                 height -= ht * 3
                 continue
 
-            width = self.wd.width / 2
+            width = self.wd.width / 4
 
             #rooms = [choice(self.locations[size + "_rooms"]) for size in i]
             height2 = []
-            cur_wd = len(''.join([k.split('\n')[0] for k in rooms])) * 3 - 1
-            if cur_wd < mx_wd:
-                rooms.append(f'{"-" * ((mx_wd - cur_wd) // 3)}')
+            # cur_wd = len(''.join([k.split('\n')[0] for k in rooms])) * 3 - 1
+            # if cur_wd < mx_wd:
+            #     rooms.append(f'{"-" * ((mx_wd - cur_wd) // 3)}')
 
             for ind, room in enumerate(rooms):
                 cur_height = height
                 if ind != 0:
-                    width = self.wd.width / 2
+                    width = self.wd.width / 4
                     for index in range(ind):
-                        width += len(rooms[index].split('\n')[0] * 60)
+                        cur_room = rooms[index][0].replace("-", "   ").replace("W", "   ")
+                        #cur_room = cur_room.replace("d", "  ")
+                        width += len(max(cur_room.split('\n'), key=len)[:-1] * 20)
                     #width = len(rooms[ind - 1].split('\n')[0]) * 60 + self.wd.width / 2
                     # if len(room.split('\n')) > 1:
                     #     if "d" == location[ind1][ind][0]:
                     #         height -= ((len(max(rooms, key=(lambda x: len(x.split('\n')[0]))).split('\n')) -
                     #                     len(room.split('\n'))) * 20)
 
+                if True:
                     if "d" == location[ind1][0][0]:
-                        cur_height -= ((len(max(rooms, key=(lambda x: len(x.split('\n')[0]))).split('\n')) -
-                                        len(room.split('\n'))) * 20)
+                        try:
+                            cur_height -= ((len(max(rooms, key=(lambda x: len(x[0].split('\n'))))[0].split('\n')) -
+                                            len(room[0].split('\n'))) * 20)
 
-                h, _ = self.load_room(room, width, cur_height, wd, ht)
+                        except Exception as e:
+                            print(e)
+                            print(rooms)
+
+
+                h, _ = self.load_room(room[0], width, cur_height, wd, ht)
+                interior_name = location[ind1][ind]+ "_interior_" + room[1]
+                self.load_interior(choice(self.locations[interior_name]), width, cur_height, wd, ht)
                 height2.append(h)
+                arcade.texture.default_texture_cache.flush()
 
             height = min(height2)
-            width = self.wd.width / 2
+            width = self.wd.width / 4
 
         hallway = f"""|{' ' * mx_wd}|\nE{' ' * mx_wd}|\n{' ' * mx_wd}|\n|{' ' * mx_wd}|\n"""
-        self.load_room(hallway, width, hallway_height, wd, ht)
+        self.load_room(hallway, width, hallway_height, wd, ht, True)
 
     def draw(self):
         self.spawns_objects.draw()
         self.floor.draw()
+        self.interior.draw()
         self.objects.draw()
         # for i in self.objects:
         #     i.draw_hit_box((255, 0, 0))
@@ -254,9 +267,26 @@ class Location:
         for ind in del_indexes:
             del self.bullets[ind]
 
-    def load_room(self, room, width, height, wd, ht):
+    def load_interior(self, interior: list, width: float, height: float, wd: float, ht: float):
+        for i in interior:
+            cur_wd = width + wd / 3 * i[0]
+            cur_ht = height + ht * i[1]
+
+            sprite = arcade.Sprite(get_path(i[2] + ".png"), (1, 1), cur_wd, cur_ht)
+            self.interior.append(sprite)
+
+    def load_room(self, room: str, width: float, height: float, wd: float, ht: float, is_hallway=False):
         original_width = width
-        for s in room:
+        for ind, s in enumerate(room):
+            if is_hallway and s not in ['\n', "|"]:
+                if room.find('\n') > ind:
+                    sprite = arcade.Sprite(get_path("VWall.png"), (1, 1), width, height + ht)
+                    if not sprite.collides_with_list(self.objects):
+                        self.objects.append(sprite)
+                elif room[:-1].rfind('\n') < ind:
+                    sprite = arcade.Sprite(get_path("VWall.png"), (1, 1), width, height - ht)
+                    if not sprite.collides_with_list(self.objects):
+                        self.objects.append(sprite)
             if s == "\n":
                 width = original_width
                 height -= ht
