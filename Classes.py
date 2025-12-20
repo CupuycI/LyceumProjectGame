@@ -1,6 +1,6 @@
 import json
 import math
-from random import choice
+from random import choice, randint
 
 import arcade
 
@@ -158,6 +158,7 @@ class Location:
         self.spawns_objects = arcade.SpriteList()
         self.create_spawn()
         self.objects = arcade.SpriteList()
+        self.entries = arcade.SpriteList()
         self.interior = arcade.SpriteList()
         self.floor = arcade.SpriteList()
         self.create_location()
@@ -170,8 +171,12 @@ class Location:
 
     def create_location(self):
         self.locations = []
-        with open(get_path("locations.json"), "r", encoding="utf8") as f:
+        self.evidence = []
+        with (open(get_path("locations.json"), "r", encoding="utf8") as f,
+              open(get_path("evidence.json"), "r", encoding="utf8") as f2):
             self.locations = json.load(f)
+            self.evidence = json.load(f2)[self.size]
+            self.evidence = self.evidence[choice([i for i in self.evidence.keys()])]
 
         height = self.wd.height / 1.5
         wd = arcade.Sprite(get_path("HWall.png"), (1, 1), 0, 0).width
@@ -188,13 +193,6 @@ class Location:
 
         mx_wd = len(max([''.join([k[0].split('\n')[0] for k in i]) for i in location2 if i != "hallway"], key=len)) * 3 - 1
         for ind1, rooms in enumerate(location2):
-            # if i == "hallway":
-            #     height -= ht
-            #     width = self.wd.width / 2
-            #     if i == "hallway":
-            #         hallway_height = height
-            #         height -= ht * 3
-            #     continue
             height -= ht
             if rooms == "hallway":
                 hallway_height = height
@@ -202,12 +200,7 @@ class Location:
                 continue
 
             width = self.wd.width / 4
-
-            #rooms = [choice(self.locations[size + "_rooms"]) for size in i]
             height2 = []
-            # cur_wd = len(''.join([k.split('\n')[0] for k in rooms])) * 3 - 1
-            # if cur_wd < mx_wd:
-            #     rooms.append(f'{"-" * ((mx_wd - cur_wd) // 3)}')
 
             for ind, room in enumerate(rooms):
                 cur_height = height
@@ -215,13 +208,7 @@ class Location:
                     width = self.wd.width / 4
                     for index in range(ind):
                         cur_room = rooms[index][0].replace("-", "   ").replace("W", "   ")
-                        #cur_room = cur_room.replace("d", "  ")
                         width += len(max(cur_room.split('\n'), key=len)[:-1] * 20)
-                    #width = len(rooms[ind - 1].split('\n')[0]) * 60 + self.wd.width / 2
-                    # if len(room.split('\n')) > 1:
-                    #     if "d" == location[ind1][ind][0]:
-                    #         height -= ((len(max(rooms, key=(lambda x: len(x.split('\n')[0]))).split('\n')) -
-                    #                     len(room.split('\n'))) * 20)
 
                 if True:
                     if "d" == location[ind1][0][0]:
@@ -243,16 +230,17 @@ class Location:
             height = min(height2)
             width = self.wd.width / 4
 
-        hallway = f"""|{' ' * mx_wd}|\nE{' ' * mx_wd}|\n{' ' * mx_wd}|\n|{' ' * mx_wd}|\n"""
+        hallway = f"""|{' ' * mx_wd}|\nE{' ' * mx_wd}|\n{' ' * mx_wd}|\n{' ' * mx_wd}|\n"""
         self.load_room(hallway, width, hallway_height, wd, ht, True)
+        self.load_evidence(self.evidence)
 
     def draw(self):
         self.spawns_objects.draw()
         self.floor.draw()
         self.interior.draw()
+        self.entries.draw()
         self.objects.draw()
-        # for i in self.objects:
-        #     i.draw_hit_box((255, 0, 0))
+        self.evidence_sprites.draw()
         self.bullets_sprites.draw()
 
     def update(self, delta_time):
@@ -266,6 +254,44 @@ class Location:
 
         for ind in del_indexes:
             del self.bullets[ind]
+
+    def load_evidence(self, evidence):
+        self.evidence_sprites = arcade.SpriteList()
+        if evidence["forced entry"]:
+            entry = self.entries.sprite_list[0]
+            entry: arcade.Sprite
+            entry.append_texture(arcade.load_texture(get_path("ForcedDoor.png")))
+            entry.set_texture(1)
+
+        shoe_print_texture = arcade.load_texture(get_path("Footprints.png"))
+        for i in range(randint(0, evidence["shoeprints"])):
+            floor = choice(self.floor.sprite_list)
+            while floor.collides_with_list(self.objects) or floor.collides_with_list(self.interior):
+                floor = choice(self.floor.sprite_list)
+            prints = arcade.Sprite(shoe_print_texture, 1, floor.center_x, floor.center_y, randint(0, 360))
+            self.evidence_sprites.append(prints)
+
+        hand_print_texture = arcade.load_texture(get_path("Handprint.png"))
+        for i in range(randint(0, evidence["handprints"])):
+            interior_obj = choice(self.interior.sprite_list)
+            path = str(interior_obj.texture.file_path)
+            while "Wardrobe" in path or "Sink" in path or "Bath" in path or "TV" in path:
+                interior_obj = choice(self.interior.sprite_list)
+                path = str(interior_obj.texture.file_path)
+            prints = arcade.Sprite(hand_print_texture, 1, interior_obj.center_x, interior_obj.center_y,
+                                   randint(0, 360))
+
+            self.evidence_sprites.append(prints)
+
+        cloth_part_texture = arcade.load_texture(get_path("ClothPart.png"))
+        for i in range(randint(0, evidence["cloth part"])):
+            obj = choice(choice([self.interior, self.floor]).sprite_list)
+            while obj in self.floor.sprite_list and obj.collides_with_list(self.objects):
+                obj = choice(choice([self.interior, self.floor]).sprite_list)
+
+            cloth_part = arcade.Sprite(cloth_part_texture, 1, obj.center_x, obj.center_y, randint(0, 360))
+
+            self.evidence_sprites.append(cloth_part)
 
     def load_interior(self, interior: list, width: float, height: float, wd: float, ht: float):
         for i in interior:
@@ -320,7 +346,7 @@ class Location:
                 sprite = arcade.Sprite(get_path("LDoor.png"), (1, 1), width, height)
                 height += ht
                 width += sprite.width
-                self.objects.append(sprite)
+                self.entries.append(sprite)
                 continue
 
             else:
