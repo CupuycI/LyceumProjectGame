@@ -1,6 +1,7 @@
 from pyglet.event import EVENT_HANDLE_STATE
 
 from Classes import *
+
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1280
 SCREEN_TITLE = "RUC\nResponding to an urgent call"

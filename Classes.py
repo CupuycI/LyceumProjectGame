@@ -6,7 +6,6 @@ import arcade
 
 from functions import  *
 
-
 class MyButton:
     def __init__(self, wd, center_x, center_y, text, function, color, hovered_color, text_size):
         self.wd = wd
@@ -161,13 +160,28 @@ class Location:
         self.entries = arcade.SpriteList()
         self.interior = arcade.SpriteList()
         self.floor = arcade.SpriteList()
+        self.doors_sprites = arcade.SpriteList()
         self.create_location()
         self.bullets = []
         self.bullets_sprites = arcade.SpriteList()
 
     def create_spawn(self):
         police_car = arcade.Sprite(get_path("PoliceCar.png"), (1, 1), self.wd.width / 30, self.wd.height / 2)
+        self.police_car = police_car
         self.spawns_objects.append(police_car)
+        self.spawn_floor = arcade.SpriteList()
+        side_walk_texture = arcade.load_texture(get_path("sidewalk.png"))
+        road_texture = arcade.load_texture(get_path("Road.png"))
+        grass_texture = arcade.load_texture(get_path("Grass.png"))
+        for i in range(self.wd.height // side_walk_texture.height + 2):
+            for k in range(1, 4):
+                sprite = arcade.Sprite(grass_texture, 1, police_car.center_x + police_car.width / 2.5 +
+                                       side_walk_texture.width * k, side_walk_texture.height * i)
+                self.spawn_floor.append(sprite)
+            sprite = arcade.Sprite(road_texture, 1, police_car.center_x - police_car.width / 2.5, road_texture.height * i)
+            self.spawn_floor.append(sprite)
+            sprite = arcade.Sprite(side_walk_texture, 1, police_car.center_x + police_car.width / 2.5, side_walk_texture.height * i)
+            self.spawn_floor.append(sprite)
 
     def create_location(self):
         self.locations = []
@@ -182,7 +196,8 @@ class Location:
         wd = arcade.Sprite(get_path("HWall.png"), (1, 1), 0, 0).width
         ht = arcade.Sprite(get_path("VWall.png"), (1, 1), 0, 0).height
         location = choice(self.locations[self.size])
-        width = self.wd.width / 4
+        start_x = self.wd.width / 4
+        width = start_x
         location2 = []
         for i in location[:-1]:
             if i == "hallway":
@@ -199,13 +214,13 @@ class Location:
                 height -= ht * 3
                 continue
 
-            width = self.wd.width / 4
+            width = start_x
             height2 = []
 
             for ind, room in enumerate(rooms):
                 cur_height = height
                 if ind != 0:
-                    width = self.wd.width / 4
+                    width = start_x
                     for index in range(ind):
                         cur_room = rooms[index][0].replace("-", "   ").replace("W", "   ")
                         width += len(max(cur_room.split('\n'), key=len)[:-1] * 20)
@@ -228,13 +243,30 @@ class Location:
                 arcade.texture.default_texture_cache.flush()
 
             height = min(height2)
-            width = self.wd.width / 4
+            width = start_x
 
         hallway = f"""|{' ' * mx_wd}|\nE{' ' * mx_wd}|\n{' ' * mx_wd}|\n{' ' * mx_wd}|\n"""
         self.load_room(hallway, width, hallway_height, wd, ht, True)
         self.load_evidence(self.evidence)
+        sidewalk_texture = arcade.load_texture(get_path("sidewalk.png")).rotate_90()
+
+        for i in range(int(start_x - (self.police_car.center_x + self.police_car.width / 2.5)) //
+                       sidewalk_texture.width - 1):
+            x = self.police_car.center_x + self.police_car.width + i * sidewalk_texture.width
+            sprite = arcade.Sprite(sidewalk_texture, 1, x, hallway_height - sidewalk_texture.height / 2.5)
+            self.spawn_floor.append(sprite)
+
+        wall_texture = arcade.load_texture(get_path("VWall.png"))
+        x = start_x - wall_texture.width
+        for i in range(int(self.wd.height - hallway_height) // wall_texture.height + 1):
+            sprite = arcade.Sprite(wall_texture, 1, x, hallway_height + wall_texture.height * i)
+            self.objects.append(sprite)
+            if i < 20:
+                sprite = arcade.Sprite(wall_texture, 1, x, wall_texture.height * i)
+                self.objects.append(sprite)
 
     def draw(self):
+        self.spawn_floor.draw()
         self.spawns_objects.draw()
         self.floor.draw()
         self.interior.draw()
@@ -286,7 +318,8 @@ class Location:
         cloth_part_texture = arcade.load_texture(get_path("ClothPart.png"))
         for i in range(randint(0, evidence["cloth part"])):
             obj = choice(choice([self.interior, self.floor]).sprite_list)
-            while obj in self.floor.sprite_list and obj.collides_with_list(self.objects):
+            while (obj in self.floor.sprite_list and obj.collides_with_list(self.objects) or
+                   obj in self.interior and "Stove" in str(obj.texture.file_path)):
                 obj = choice(choice([self.interior, self.floor]).sprite_list)
 
             cloth_part = arcade.Sprite(cloth_part_texture, 1, obj.center_x, obj.center_y, randint(0, 360))
@@ -336,6 +369,14 @@ class Location:
                 for n in range(-1, 2):
                     floor = arcade.Sprite(get_path("Floor.png"), (1, 1), width + (wd / 3) * n, height)
                     self.floor.append(floor)
+                self.doors_sprites.append(sprite)
+
+            elif s == "D":
+                sprite = arcade.Sprite(get_path("HUDoor.png"), (1, 1), width, height)
+                for n in range(-1, 2):
+                    floor = arcade.Sprite(get_path("Floor.png"), (1, 1), width + (wd / 3) * n, height)
+                    self.floor.append(floor)
+                self.doors_sprites.append(sprite)
 
             elif s == "E":
                 width -= wd / 3

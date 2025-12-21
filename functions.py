@@ -37,8 +37,8 @@ def change_status(wd, status, value=False):
 
 def set_background(file_name, screen_width, screen_height):
     background = arcade.load_texture(get_path(file_name))
-    arcade.draw_texture_rect(background, get_my_rect(screen_width / 2, screen_height / 2.5, background.width,
-                                                     background.height))
+    arcade.draw_texture_rect(background, get_my_rect(screen_width / 2, screen_height / 2.5, screen_width,
+                                                     screen_height))
 
 
 def set_image(file_name, center_x, center_y):
