@@ -1,5 +1,6 @@
 import json
 import math
+from math import atan2
 from random import choice, randint
 
 import arcade
@@ -46,13 +47,17 @@ class Detective:
         self.speed = speed
         self.items = ["Pistol", "Flashlight", "Handcuffs", "Hands"]
         self.item = ""
-        self.sprite = arcade.Sprite(get_path("Detective.png"), (1, 1), x, y)
+        self.sprite = arcade.Sprite(get_path("Detective.png"), 0.9, x, y)
         self.sprite.append_texture(arcade.load_texture(get_path("DetectiveWithGun.png")))
-        self.rotate = "forward"
+        self.sprite_2 = arcade.Sprite(get_path("DetectiveHitBoxImage.png"), 0.9, x, y)
         self.location = location
+        self.collected_evidence = arcade.SpriteList()
 
     def draw(self):
-        pass
+        draw_possibility_interaction(self.sprite_2, self.location.evidence_sprites, self.collected_evidence)
+        draw_possibility_interaction(self.sprite_2, self.location.exits, self.collected_evidence)
+        draw_possibility_interaction(self.sprite_2, self.location.entries, self.collected_evidence)
+        self.sprite_2.draw_hit_box((255, 0, 0))
 
 
     def update(self, keys: list, delta_time=False):
@@ -60,90 +65,88 @@ class Detective:
             if arcade.key.KEY_1 in keys:
                 self.item = self.items[0]
                 self.sprite.set_texture(1)
+                self.sprite.sync_hit_box_to_texture()
 
             elif arcade.key.KEY_4 in keys:
                 self.item = self.items[3]
                 self.sprite.set_texture(0)
+                self.sprite.sync_hit_box_to_texture()
+
+            if arcade.key.E in keys:
+                for i in self.sprite_2.collides_with_list(self.location.evidence_sprites):
+                    if i not in self.collected_evidence:
+                        if "ClothPart" in str(i.texture.file_path):
+                            i.remove_from_sprite_lists()
+                        self.collected_evidence.append(i)
+
+                for i in self.sprite_2.collides_with_list(self.location.entries):
+                    if i not in self.collected_evidence:
+                        i.append_texture(arcade.load_texture(get_path("OpenedEntry.png")))
+                        print(i.textures)
+                        i.set_texture(-1)
+                        i.sync_hit_box_to_texture()
+                        i.center_x -= i.width / 2.75
+                        i.center_y += i.height * 3.25
+                        self.collected_evidence.append(i)
+
+                if self.sprite_2.collides_with_list(self.location.exits):
+                    change_status(self.wd, "MainMenu")
+                    return
+
 
             speed = self.speed / math.sqrt(2) if len(keys) > 1 else self.speed
             for key in keys:
                 if key == arcade.key.W:
                     self.sprite.center_y += speed * delta_time
-                    if self.rotate == "right":
-                        self.sprite.turn_left()
-
-                    elif self.rotate == "left":
-                        self.sprite.turn_right()
-
-                    elif self.rotate == "down":
-                        self.sprite.turn_right()
-                        self.sprite.turn_right()
-
-                    self.rotate = "forward"
 
                 elif key == arcade.key.S:
                     self.sprite.center_y -= speed * delta_time
-                    if self.rotate == "right":
-                        self.sprite.turn_right()
-
-                    elif self.rotate == "left":
-                        self.sprite.turn_left()
-
-                    elif self.rotate == "forward":
-                        self.sprite.turn_left()
-                        self.sprite.turn_left()
-
-                    self.rotate = "down"
 
                 elif key == arcade.key.A:
                     self.sprite.center_x -= speed * delta_time
-                    if self.rotate == "forward":
-                        self.sprite.turn_left()
-
-                    elif self.rotate == "right":
-                        self.sprite.turn_left()
-                        self.sprite.turn_left()
-
-                    elif self.rotate == "down":
-                        self.sprite.turn_right()
-
-                    self.rotate = "left"
 
                 elif key == arcade.key.D:
                     self.sprite.center_x += speed * delta_time
-                    if self.rotate == "forward":
-                        self.sprite.turn_right()
 
-                    elif self.rotate == "left":
-                        self.sprite.turn_right()
-                        self.sprite.turn_right()
+                for i in self.location.doors_sprites:
+                    if self.sprite.collides_with_sprite(i):
+                        i: arcade.Sprite
+                        if len(i.textures) < 2:
+                            i.append_texture(self.location.opened_door_texture)
+                            i.set_texture(1)
+                            i.sync_hit_box_to_texture()
+                            i.center_x -= self.location.opened_door_texture.width * 3
+                            i.center_y -= self.location.opened_door_texture.height / 2.75
 
-                    elif self.rotate == "down":
-                        self.sprite.turn_left()
+                    elif abs(self.sprite.center_x - i.center_x) > 60:
+                        if len(i.textures) >= 2:
+                            i.set_texture(0)
+                            i.sync_hit_box_to_texture()
+                            i.textures = i.textures[:-1]
+                            i.center_x += self.location.opened_door_texture.width * 3
+                            i.center_y += self.location.opened_door_texture.height / 2.75
 
-                    self.rotate = "right"
+                check_collisions(self.sprite, self.location.spawns_objects, speed, delta_time)
+                check_collisions(self.sprite, self.location.objects, speed, delta_time)
+                check_collisions(self.sprite, self.location.interior, speed, delta_time)
+                check_collisions(self.sprite, self.location.entries, speed, delta_time)
 
-                for sprite in self.sprite.collides_with_list(self.location.spawns_objects):
-                    if sprite.center_x < self.sprite.center_x:
-                        self.sprite.center_x += speed * delta_time
+                self.sprite_2.center_x = self.sprite.center_x
+                self.sprite_2.center_y = self.sprite.center_y
 
-                    elif sprite.center_x > self.sprite.center_x:
-                        self.sprite.center_x -= speed * delta_time
 
-                    if sprite.center_y < self.sprite.center_y:
-                        self.sprite.center_y += speed * delta_time
+    def update_angle(self, x, y):
+        t_x, t_y = get_speed(self.sprite.center_x, self.sprite.center_y, self.speed, x, y)
+        angle = atan2(t_x, t_y)
+        self.sprite.angle = math.degrees(angle)
+        self.sprite_2.angle = self.sprite.angle
 
-                    elif sprite.center_y > self.sprite.center_y:
-                        self.sprite.center_y -= speed * delta_time
 
 
 class Bullet:
     def __init__(self, x, y, speed, t_x, t_y):
         self.sprite = arcade.Sprite(get_path("Bullet.png"), (1, 1), x, y)
-        d_x, d_y = t_x - x, t_y - y
-        d = math.sqrt(d_x ** 2 + d_y ** 2)
-        self.speed_x = speed / d * d_x
-        self.speed_y = speed / d * d_y
+        self.speed_x, self.speed_y = get_speed(x, y, speed, t_x, t_y)
 
     def update(self, delta_time):
         self.sprite.center_x += self.speed_x * delta_time
@@ -155,6 +158,7 @@ class Location:
         self.size = size
         self.wd = wd
         self.spawns_objects = arcade.SpriteList()
+        self.exits = arcade.SpriteList()
         self.create_spawn()
         self.objects = arcade.SpriteList()
         self.entries = arcade.SpriteList()
@@ -164,10 +168,13 @@ class Location:
         self.create_location()
         self.bullets = []
         self.bullets_sprites = arcade.SpriteList()
+        self.opened_door_texture = arcade.load_texture(get_path("OpenedDoor.png"))
+
 
     def create_spawn(self):
         police_car = arcade.Sprite(get_path("PoliceCar.png"), (1, 1), self.wd.width / 30, self.wd.height / 2)
         self.police_car = police_car
+        self.exits.append(police_car)
         self.spawns_objects.append(police_car)
         self.spawn_floor = arcade.SpriteList()
         side_walk_texture = arcade.load_texture(get_path("sidewalk.png"))
@@ -318,7 +325,8 @@ class Location:
         cloth_part_texture = arcade.load_texture(get_path("ClothPart.png"))
         for i in range(randint(0, evidence["cloth part"])):
             obj = choice(choice([self.interior, self.floor]).sprite_list)
-            while (obj in self.floor.sprite_list and obj.collides_with_list(self.objects) or
+            while (obj in self.floor.sprite_list and (obj.collides_with_list(self.objects) or
+                                                      obj.collides_with_list(self.interior)) or
                    obj in self.interior and "Stove" in str(obj.texture.file_path)):
                 obj = choice(choice([self.interior, self.floor]).sprite_list)
 

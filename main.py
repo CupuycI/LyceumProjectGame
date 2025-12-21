@@ -93,12 +93,13 @@ class MainWindow(arcade.Window):
                 self.was = self.status
                 self.keys = []
                 self.game_location = Location(self, self.game_size)
-                self.player = Detective(self, 500, self.height / 2, self.game_location)
+                self.player = Detective(self, 200, self.height / 2, self.game_location)
                 self.sprite_lst = arcade.SpriteList()
                 self.sprite_lst.append(self.player.sprite)
 
             self.game_location.draw()
             self.sprite_lst.draw()
+            self.player.draw()
 
         elif self.status == "Pause":
             if self.was != self.status:
@@ -129,6 +130,13 @@ class MainWindow(arcade.Window):
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         for btn in self.buttons_lst:
             btn.on_hover_update(x, y)
+
+        if self.status == "Game":
+            try:
+                self.player.update_angle(x, y)
+
+            except AttributeError:
+                pass
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
         if self.status == "Game" and self.player.item == self.player.items[0]:
