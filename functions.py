@@ -75,3 +75,8 @@ def draw_possibility_interaction(object, lst, collected_evidence):
     for target in object.collides_with_list(lst):
         if target not in collected_evidence:
             set_image(get_path("Interaction.png"), target.center_x + object.width / 2, target.center_y + object.height / 2)
+
+
+def move_camera_to_player(wd, camera_speed):
+    target = [max(wd.player.sprite.center_x, wd.center_x), wd.center_y]
+    wd.camera.position = arcade.math.lerp_2d(wd.camera.position, target, camera_speed)

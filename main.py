@@ -1,3 +1,4 @@
+import arcade
 from pyglet.event import EVENT_HANDLE_STATE
 
 from Classes import *
@@ -18,6 +19,7 @@ class MainWindow(arcade.Window):
 
     def on_draw(self):
         self.clear()
+        self.default_camera.use()
         if self.status == "MainMenu":
             if self.was != self.status:
                 self.buttons_lst = [MyButton(self, SCREEN_WIDTH / 2.3, SCREEN_HEIGHT / 1.55,
@@ -92,11 +94,14 @@ class MainWindow(arcade.Window):
             if "Pause" != self.was != "Game":
                 self.was = self.status
                 self.keys = []
-                self.game_location = Location(self, self.game_size)
+                self.game_location = Location(self, self.game_size, self.level)
                 self.player = Detective(self, 200, self.height / 2, self.game_location)
                 self.sprite_lst = arcade.SpriteList()
                 self.sprite_lst.append(self.player.sprite)
+                self.camera = arcade.Camera2D()
 
+
+            self.camera.use()
             self.game_location.draw()
             self.sprite_lst.draw()
             self.player.draw()
@@ -123,9 +128,10 @@ class MainWindow(arcade.Window):
             if self.status == "Game":
                 self.player.update(self.keys, delta_time)
                 self.game_location.update(delta_time)
+                move_camera_to_player(self, 0.1)
 
-        except AttributeError:
-            pass
+        except AttributeError as e:
+            print(e)
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         for btn in self.buttons_lst:
@@ -133,6 +139,7 @@ class MainWindow(arcade.Window):
 
         if self.status == "Game":
             try:
+                x += self.camera.position.x - self.center_x
                 self.player.update_angle(x, y)
 
             except AttributeError:
@@ -140,6 +147,7 @@ class MainWindow(arcade.Window):
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
         if self.status == "Game" and self.player.item == self.player.items[0]:
+            x += self.camera.position.x - self.center_x
             bullet = Bullet(self.player.sprite.center_x, self.player.sprite.center_y, 2500, x, y)
             self.game_location.bullets_sprites.append(bullet.sprite)
             self.game_location.bullets.append(bullet)

@@ -1,10 +1,12 @@
 import json
 import math
 from math import atan2
-from random import choice, randint
+from random import choice, randint, random
+import random
 
 import arcade
 
+import Classes
 from functions import  *
 
 class MyButton:
@@ -38,6 +40,16 @@ class MyButton:
             self.function()
 
 
+class Criminal(arcade.Sprite):
+    def __init__(self, wd, x: float, y: float, location, hp=100, speed=100):
+        super().__init__(get_path("Criminal.png"), 0.9, x, y)
+        level = wd.level
+        self.wd = wd
+        self.location = location
+        self.hp = hp
+        self.speed = speed
+
+
 class Detective:
     def __init__(self, wd: arcade.Window, x, y, location, hp=100, speed=100):
         self.wd = wd
@@ -45,7 +57,7 @@ class Detective:
         self.y = y
         self.hp = hp
         self.speed = speed
-        self.items = ["Pistol", "Flashlight", "Handcuffs", "Hands"]
+        self.items = ["Pistol", "UVFlashlight", "Handcuffs", "Hands"]
         self.item = ""
         self.sprite = arcade.Sprite(get_path("Detective.png"), 0.9, x, y)
         self.sprite.append_texture(arcade.load_texture(get_path("DetectiveWithGun.png")))
@@ -82,7 +94,6 @@ class Detective:
                 for i in self.sprite_2.collides_with_list(self.location.entries):
                     if i not in self.collected_evidence:
                         i.append_texture(arcade.load_texture(get_path("OpenedEntry.png")))
-                        print(i.textures)
                         i.set_texture(-1)
                         i.sync_hit_box_to_texture()
                         i.center_x -= i.width / 2.75
@@ -154,7 +165,7 @@ class Bullet:
 
 
 class Location:
-    def __init__(self, wd, size):
+    def __init__(self, wd, size, level):
         self.size = size
         self.wd = wd
         self.spawns_objects = arcade.SpriteList()
@@ -169,6 +180,13 @@ class Location:
         self.bullets = []
         self.bullets_sprites = arcade.SpriteList()
         self.opened_door_texture = arcade.load_texture(get_path("OpenedDoor.png"))
+        self.time = 0
+        self.criminal_is_spawned = False
+
+
+    def spawn_criminal(self):
+        self.criminal_is_spawned = True
+        print(True)
 
 
     def create_spawn(self):
@@ -293,6 +311,13 @@ class Location:
 
         for ind in del_indexes:
             del self.bullets[ind]
+
+        self.time += delta_time
+        if random.uniform(self.time, 100 - (100 - self.time)) > 50 and not self.criminal_is_spawned:
+            self.spawn_criminal()
+
+        elif not self.criminal_is_spawned:
+            print(self.time)
 
     def load_evidence(self, evidence):
         self.evidence_sprites = arcade.SpriteList()
