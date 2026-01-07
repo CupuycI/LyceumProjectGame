@@ -51,6 +51,8 @@ def set_image(file_name, center_x, center_y):
 def get_speed(x, y, speed, t_x, t_y):
     d_x, d_y = t_x - x, t_y - y
     d = math.sqrt(d_x ** 2 + d_y ** 2)
+    if d == 0:
+        d = 1
     speed_x = speed / d * d_x
     speed_y = speed / d * d_y
     return speed_x, speed_y
@@ -80,3 +82,33 @@ def draw_possibility_interaction(object, lst, collected_evidence):
 def move_camera_to_player(wd, camera_speed):
     target = [max(wd.player.sprite.center_x, wd.center_x), wd.center_y]
     wd.camera.position = arcade.math.lerp_2d(wd.camera.position, target, camera_speed)
+
+
+def check_doors(sprite, location):
+    for i in location.doors_sprites:
+        if sprite.collides_with_sprite(i):
+            i: arcade.Sprite
+            if len(i.textures) < 2:
+                # i.append_texture(location.opened_door_texture_2)
+                i.append_texture(location.opened_door_texture)
+                i.set_texture(-1)
+                # i.sync_hit_box_to_texture()
+                i: arcade.Sprite
+                i.sync_hit_box_to_texture()
+                print(i.hit_box.get_adjusted_points(), i.center_x, i.width / 2)
+                i.center_x -= location.opened_door_texture.width * 1.05
+                i.center_y -= location.opened_door_texture.height / 2.5
+
+        elif (abs(location.wd.player.sprite.center_x - i.center_x) > 80 and
+              (not location.criminal_is_spawned or abs(location.criminal.center_x - i.center_x) > 80)):
+            if len(i.textures) >= 2:
+                i.set_texture(0)
+                i.sync_hit_box_to_texture()
+                print(True)
+                i.textures = i.textures[:-1]
+                i.center_x += location.opened_door_texture.width * 1.05
+                i.center_y += location.opened_door_texture.height / 2.5
+
+
+def get_distance(x1, y1, x2, y2):
+    return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)

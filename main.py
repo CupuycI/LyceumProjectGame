@@ -94,7 +94,7 @@ class MainWindow(arcade.Window):
             if "Pause" != self.was != "Game":
                 self.was = self.status
                 self.keys = []
-                self.game_location = Location(self, self.game_size, self.level)
+                self.game_location = Location(self)
                 self.player = Detective(self, 200, self.height / 2, self.game_location)
                 self.sprite_lst = arcade.SpriteList()
                 self.sprite_lst.append(self.player.sprite)

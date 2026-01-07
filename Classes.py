@@ -1,12 +1,11 @@
 import json
 import math
+from itertools import product
 from math import atan2
-from random import choice, randint, random
-import random
+from random import choice, randint, random, uniform
 
 import arcade
 
-import Classes
 from functions import  *
 
 class MyButton:
@@ -48,6 +47,169 @@ class Criminal(arcade.Sprite):
         self.location = location
         self.hp = hp
         self.speed = speed
+        self.speed_x = 0
+        self.speed_y = 0
+        self.last_speed_x = 0
+        self.last_speed_y = 0
+        self.last_target = ""
+        self.status = ""
+        self.append_texture(arcade.load_texture(get_path("Criminal_with_knife.png")))
+        with open("criminals.json", "r", encoding="utf8") as f:
+            self.type = json.load(f)[level]
+
+        self.MAX_ATTACK_COOLDOWN = 60
+        self.MIN_ATTACK_COOLDOWN = 15
+        self.MAX_ATTACK_DURATION = 30
+        self.MIN_ATTACK_DURATION = 10
+        self.attack_cooldown_timer = 0
+        self.attack_timer = 0
+        self.MAX_HIDE_COOLDOWN = 30
+        self.MIN_HIDE_COOLDOWN = 10
+        self.MAX_HIDE_DURATION = 40
+        self.MIN_HIDE_DURATION = 5
+        self.hide_cooldown_timer = 0
+        self.hide_timer = 0
+
+    def hide(self):
+        self.set_texture(0)
+        target = min(self.location.hiding_poses, key=(lambda i: get_distance(self.center_x, self.center_y, i[0], i[1])))
+        self.main_x = target[0]
+        self.main_y = target[1]
+        cur_room = self.location.get_current_room(self)
+        target_room = self.location.get_current_room(arcade.Sprite(get_path("Bullet.png"), 1,
+                                                                                 target[0], target[1]))
+        if cur_room and cur_room != target_room:
+            try:
+                door = cur_room[1].sprite_list[0]
+                target = min(self.location.doors_points,
+                             key=(lambda i: get_distance(i[0], i[1], door.center_x, door.center_y)))
+                self.main_x = target[0]
+                self.main_y = target[1]
+
+            except Exception as e:
+                print(e, cur_room)
+
+        elif not cur_room and target_room:
+            try:
+                door = target_room[1].sprite_list[0]
+                target = min(self.location.doors_points, key=(lambda i: get_distance(i[0], i[1], door.center_x, door.center_y)))
+                self.main_x = target[0]
+                self.main_y = target[1]
+
+            except Exception as e:
+                print(e, cur_room)
+
+    def escape(self):
+        self.set_texture(0)
+        self.main_x = -20
+        self.main_y = -20
+
+    def attack(self):
+        self.set_texture(1)
+        cur_room = self.location.get_current_room(self)
+        if cur_room and cur_room != self.location.get_current_room(self.wd.player.sprite):
+            door = cur_room[1].sprite_list[0]
+            target = min(self.location.doors_points, key=(lambda i: get_distance(i[0], i[1], door.center_x, door.center_y)))
+            self.main_x = target[0]
+            self.main_y = target[1]
+            return
+        self.main_x = self.wd.player.sprite.center_x
+        self.main_y = self.wd.player.sprite.center_y
+
+    def surrender(self):
+        self.main_x, self.main_y = self.location.police_car.center_x, self.location.police_car.center_y
+
+    def update(self, delta_time: float = 1 / 60, *args, **kwargs) -> None:
+        if self.hp <= 0:
+            return
+
+        elif self.hp <= 20 or self.type["Fear"] > 0.8 and self.type["Cool-headedness"] < 0.5:
+            self.surrender()
+            return
+        self.update_targets()
+        self.update_timers()
+        nearest_points = sorted(self.location.points, key=(lambda i: get_distance(i[0], i[1], self.center_x, self.center_y)))[:2]
+        self.cur_target = min(nearest_points, key=(lambda i: get_distance(i[0], i[1], self.main_x, self.main_y)))
+        if (get_distance(self.center_x, self.center_y, self.main_x, self.main_y) <=
+                get_distance(*self.cur_target[:2], self.main_x, self.main_y)):
+            self.cur_target = [self.main_x, self.main_y, "t"]
+        self.t_x = self.cur_target[0]
+        self.t_y = self.cur_target[1]
+
+        self.change_x, self.change_y = get_speed(self.center_x, self.center_y, self.speed, self.t_x, self.t_y)
+        self.center_x += self.change_x * delta_time
+        self.center_y += self.change_y * delta_time
+
+        check_doors(self, self.location)
+        if self.check_collisions(self):
+            self.move_if_collides(delta_time)
+        check_collisions(self, self.location.objects, abs(self.change_x), delta_time)
+        check_collisions(self, self.location.interior, abs(self.change_y), delta_time)
+        self.update_angle()
+        print("[Criminal's Test] -> target's coords: ", self.t_x, self.t_y)
+        print("[Criminal's Test] -> current coords: ", self.center_x, self.center_y)
+
+    def update_timers(self):
+        if self.status == "hiding":
+            self.hide_timer += 1
+
+        else:
+            self.hide_cooldown_timer += 1
+            self.hide_timer = 0
+
+        if self.status == "attacking":
+            self.attack_timer += 1
+
+        else:
+            self.attack_cooldown_timer += 1
+            self.attack_timer = 0
+
+    def update_targets(self):
+        if self.type["Fear"] >= 1.0:
+            self.escape()
+            self.status = "escaping"
+
+        elif (self.type["Fear"] < self.type["Rage"] > random() and self.attack_cooldown_timer >= self.MIN_ATTACK_COOLDOWN or
+              self.attack_cooldown_timer >= self.MAX_ATTACK_COOLDOWN):
+            self.attack()
+            self.status = "attacking"
+
+        else:
+            self.hide()
+            self.status = "hiding"
+            self.hide_cooldown_timer = 0
+
+    def draw(self):
+        try:
+            arcade.draw_circle_filled(self.t_x, self.t_y, 5, (0, 0, 255))
+            arcade.draw_circle_filled(self.main_x, self.main_y, 5, (0, 255, 0))
+
+        except Exception as e:
+            print(e)
+
+    def move_if_collides(self, delta_time: float = 1/60):
+        tmp = Criminal(self.wd, self.center_x, self.center_y, self.location)
+        k = randint(1, 12)
+        tmp_x = self.change_x * delta_time * k
+        tmp_y = self.change_y * delta_time * k
+        for i in product([self.center_x - tmp_x, self.center_x, self.center_x + tmp_x],
+                         [self.center_y - tmp_y, self.center_y, self.center_y + tmp_y]):
+            tmp.center_x = i[0]
+            tmp.center_y = i[1]
+            if not self.check_collisions(tmp):
+                self.center_x = tmp.center_x
+                self.center_y = tmp.center_y
+                return
+
+    def check_collisions(self, obj):
+        return obj.collides_with_list(self.location.objects) or obj.collides_with_list(self.location.interior)
+
+    def update_angle(self):
+        t_x, t_y = get_speed(self.center_x, self.center_y, self.speed, self.t_x, self.t_y)
+        angle = atan2(t_x, t_y)
+        self.angle = math.degrees(angle)
+
+
 
 
 class Detective:
@@ -118,24 +280,7 @@ class Detective:
 
                 elif key == arcade.key.D:
                     self.sprite.center_x += speed * delta_time
-
-                for i in self.location.doors_sprites:
-                    if self.sprite.collides_with_sprite(i):
-                        i: arcade.Sprite
-                        if len(i.textures) < 2:
-                            i.append_texture(self.location.opened_door_texture)
-                            i.set_texture(1)
-                            i.sync_hit_box_to_texture()
-                            i.center_x -= self.location.opened_door_texture.width * 3
-                            i.center_y -= self.location.opened_door_texture.height / 2.75
-
-                    elif abs(self.sprite.center_x - i.center_x) > 60:
-                        if len(i.textures) >= 2:
-                            i.set_texture(0)
-                            i.sync_hit_box_to_texture()
-                            i.textures = i.textures[:-1]
-                            i.center_x += self.location.opened_door_texture.width * 3
-                            i.center_y += self.location.opened_door_texture.height / 2.75
+                check_doors(self.sprite, self.location)
 
                 check_collisions(self.sprite, self.location.spawns_objects, speed, delta_time)
                 check_collisions(self.sprite, self.location.objects, speed, delta_time)
@@ -153,7 +298,6 @@ class Detective:
         self.sprite_2.angle = self.sprite.angle
 
 
-
 class Bullet:
     def __init__(self, x, y, speed, t_x, t_y):
         self.sprite = arcade.Sprite(get_path("Bullet.png"), (1, 1), x, y)
@@ -165,8 +309,8 @@ class Bullet:
 
 
 class Location:
-    def __init__(self, wd, size, level):
-        self.size = size
+    def __init__(self, wd):
+        self.size = wd.game_size
         self.wd = wd
         self.spawns_objects = arcade.SpriteList()
         self.exits = arcade.SpriteList()
@@ -180,14 +324,25 @@ class Location:
         self.bullets = []
         self.bullets_sprites = arcade.SpriteList()
         self.opened_door_texture = arcade.load_texture(get_path("OpenedDoor.png"))
+        self.opened_door_texture_2 = arcade.load_texture(get_path("OpenedDoor2.png"))
         self.time = 0
         self.criminal_is_spawned = False
 
+    def get_current_room(self, sprite):
+        cur_room = [i for i in self.rooms if sprite.collides_with_list(i[0])]
+        return cur_room if not cur_room else cur_room[0]
 
     def spawn_criminal(self):
         self.criminal_is_spawned = True
-        print(True)
+        room = choice([i for i in self.rooms if not self.wd.player.sprite.collides_with_list(i[0])])
+        spawn_place = choice(room[0])
+        self.criminal = Criminal(self.wd, spawn_place.center_x, spawn_place.center_y, self)
+        while self.criminal.collides_with_list(self.interior) or self.criminal.collides_with_list(self.objects):
+            spawn_place = choice(room[0])
+            self.criminal.center_x = spawn_place.center_x
+            self.criminal.center_y = spawn_place.center_y
 
+        self.objects.append(self.criminal)
 
     def create_spawn(self):
         police_car = arcade.Sprite(get_path("PoliceCar.png"), (1, 1), self.wd.width / 30, self.wd.height / 2)
@@ -209,8 +364,10 @@ class Location:
             self.spawn_floor.append(sprite)
 
     def create_location(self):
-        self.locations = []
-        self.evidence = []
+        self.rooms = []
+        self.points = []
+        self.hiding_poses = []
+        self.doors_points = []
         with (open(get_path("locations.json"), "r", encoding="utf8") as f,
               open(get_path("evidence.json"), "r", encoding="utf8") as f2):
             self.locations = json.load(f)
@@ -261,7 +418,7 @@ class Location:
                             print(rooms)
 
 
-                h, _ = self.load_room(room[0], width, cur_height, wd, ht)
+                h = self.load_room(room[0], width, cur_height, wd, ht, self.rooms)
                 interior_name = location[ind1][ind]+ "_interior_" + room[1]
                 self.load_interior(choice(self.locations[interior_name]), width, cur_height, wd, ht)
                 height2.append(h)
@@ -271,7 +428,12 @@ class Location:
             width = start_x
 
         hallway = f"""|{' ' * mx_wd}|\nE{' ' * mx_wd}|\n{' ' * mx_wd}|\n{' ' * mx_wd}|\n"""
-        self.load_room(hallway, width, hallway_height, wd, ht, True)
+        self.load_room(hallway, width, hallway_height, wd, ht, self.rooms, True)
+        hallway_points = []
+        for i in range(len(hallway.split('\n')[0]) // 2 - 1):
+            hallway_points.append([i * 2, -1.5, "P"])
+
+        self.load_interior(hallway_points, width, hallway_height, wd, ht)
         self.load_evidence(self.evidence)
         sidewalk_texture = arcade.load_texture(get_path("sidewalk.png")).rotate_90()
 
@@ -299,6 +461,15 @@ class Location:
         self.objects.draw()
         self.evidence_sprites.draw()
         self.bullets_sprites.draw()
+        self.doors_sprites.draw_hit_boxes((255, 0, 0))
+        for point in self.points:
+            arcade.draw_circle_filled(*point[:-1], radius=5, color=(255, 0, 0))
+
+        for point in self.doors_points:
+            arcade.draw_circle_filled(*point[:-1], radius=5, color=(255, 0, 0))
+
+        if self.criminal_is_spawned:
+            self.criminal.draw()
 
     def update(self, delta_time):
         del_indexes = []
@@ -309,15 +480,25 @@ class Location:
                 del_indexes.append(i)
                 self.bullets_sprites.remove(bullet.sprite)
 
+            if self.criminal_is_spawned and bullet.sprite.collides_with_sprite(self.criminal):
+                self.criminal.hp -= 20
+                if self.criminal.type["Cool-headedness"] < 0.6:
+                    self.criminal.type["Fear"] += 0.2
+                    if random():
+                        self.criminal.type["Rage"] += 0.1
+
         for ind in del_indexes:
             del self.bullets[ind]
 
-        self.time += delta_time
-        if random.uniform(self.time, 100 - (100 - self.time)) > 50 and not self.criminal_is_spawned:
-            self.spawn_criminal()
+        if not self.criminal_is_spawned:
+            self.time += delta_time
 
-        elif not self.criminal_is_spawned:
-            print(self.time)
+            n = randint(0, int(self.time)) - random()
+            if n > 3:
+                self.spawn_criminal()
+
+        else:
+            self.criminal.update(delta_time)
 
     def load_evidence(self, evidence):
         self.evidence_sprites = arcade.SpriteList()
@@ -363,12 +544,18 @@ class Location:
         for i in interior:
             cur_wd = width + wd / 3 * i[0]
             cur_ht = height + ht * i[1]
+            if i[2] == "P" or i[2] == "H":
+                self.points.append([cur_wd, cur_ht, "P"])
+                if i[2] == "H":
+                    self.hiding_poses.append([cur_wd, cur_ht, "H"])
+                continue
 
             sprite = arcade.Sprite(get_path(i[2] + ".png"), (1, 1), cur_wd, cur_ht)
             self.interior.append(sprite)
 
-    def load_room(self, room: str, width: float, height: float, wd: float, ht: float, is_hallway=False):
+    def load_room(self, room: str, width: float, height: float, wd: float, ht: float, rooms: list, is_hallway=False):
         original_width = width
+        cur_room = [arcade.SpriteList(), arcade.SpriteList()]
         for ind, s in enumerate(room):
             if is_hallway and s not in ['\n', "|"]:
                 if room.find('\n') > ind:
@@ -403,6 +590,11 @@ class Location:
                     floor = arcade.Sprite(get_path("Floor.png"), (1, 1), width + (wd / 3) * n, height)
                     self.floor.append(floor)
                 self.doors_sprites.append(sprite)
+                cur_room[1].append(sprite)
+                # self.points.append([sprite.center_x, sprite.center_y - 20, "d"])
+                self.points.append([sprite.center_x, sprite.center_y + 20, "D"])
+                # self.doors_points.append([sprite.center_x, sprite.center_y + 20, "d"])
+                self.doors_points.append([sprite.center_x, sprite.center_y - 20, "D"])
 
             elif s == "D":
                 sprite = arcade.Sprite(get_path("HUDoor.png"), (1, 1), width, height)
@@ -410,6 +602,11 @@ class Location:
                     floor = arcade.Sprite(get_path("Floor.png"), (1, 1), width + (wd / 3) * n, height)
                     self.floor.append(floor)
                 self.doors_sprites.append(sprite)
+                cur_room[1].append(sprite)
+                self.points.append([sprite.center_x, sprite.center_y - 20, "d"])
+                # self.points.append([sprite.center_x, sprite.center_y + 20, "D"])
+                # self.doors_points.append([sprite.center_x, sprite.center_y - 20, "d"])
+                self.doors_points.append([sprite.center_x, sprite.center_y + 20, "D"])
 
             elif s == "E":
                 width -= wd / 3
@@ -421,15 +618,20 @@ class Location:
                 height += ht
                 width += sprite.width
                 self.entries.append(sprite)
+                # self.points.append([sprite.center_x + 20, sprite.center_y - 6, "P"])
                 continue
 
             else:
                 sprite = arcade.Sprite(get_path("Floor.png"), (1, 1), width, height)
                 width += sprite.width
                 self.floor.append(sprite)
+                cur_room[0].append(sprite)
                 continue
 
             width += wd
             self.objects.append(sprite)
-        return height, width
+
+        if not is_hallway:
+            rooms.append(cur_room)
+        return height
 
