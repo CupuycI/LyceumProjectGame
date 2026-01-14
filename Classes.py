@@ -2,11 +2,13 @@ import json
 import math
 from itertools import product
 from math import atan2
-from random import choice, randint, random, uniform
+from random import choice, randint, random
 
 import arcade
 
+from evidence_creater import evidence
 from functions import  *
+
 
 class MyButton:
     def __init__(self, wd, center_x, center_y, text, function, color, hovered_color, text_size):
@@ -87,7 +89,7 @@ class Criminal(arcade.Sprite):
                 self.main_y = target[1]
 
             except Exception as e:
-                print(e, cur_room)
+                pass
 
         elif not cur_room and target_room:
             try:
@@ -97,7 +99,7 @@ class Criminal(arcade.Sprite):
                 self.main_y = target[1]
 
             except Exception as e:
-                print(e, cur_room)
+                pass
 
     def escape(self):
         self.set_texture(0)
@@ -210,8 +212,6 @@ class Criminal(arcade.Sprite):
         self.angle = math.degrees(angle)
 
 
-
-
 class Detective:
     def __init__(self, wd: arcade.Window, x, y, location, hp=100, speed=100):
         self.wd = wd
@@ -220,7 +220,7 @@ class Detective:
         self.hp = hp
         self.speed = speed
         self.items = ["Pistol", "UVFlashlight", "Handcuffs", "Hands"]
-        self.item = ""
+        self.item = "Hands"
         self.sprite = arcade.Sprite(get_path("Detective.png"), 0.9, x, y)
         self.sprite.append_texture(arcade.load_texture(get_path("DetectiveWithGun.png")))
         self.sprite_2 = arcade.Sprite(get_path("DetectiveHitBoxImage.png"), 0.9, x, y)
@@ -229,6 +229,8 @@ class Detective:
 
     def draw(self):
         draw_possibility_interaction(self.sprite_2, self.location.evidence_sprites, self.collected_evidence)
+        if self.item == self.items[1]:
+            draw_possibility_interaction(self.sprite_2, self.location.handprints, self.collected_evidence)
         draw_possibility_interaction(self.sprite_2, self.location.exits, self.collected_evidence)
         draw_possibility_interaction(self.sprite_2, self.location.entries, self.collected_evidence)
         self.sprite_2.draw_hit_box((255, 0, 0))
@@ -239,6 +241,11 @@ class Detective:
             if arcade.key.KEY_1 in keys:
                 self.item = self.items[0]
                 self.sprite.set_texture(1)
+                self.sprite.sync_hit_box_to_texture()
+
+            elif arcade.key.KEY_2 in keys:
+                self.item = self.items[1]
+                self.sprite.set_texture(0)
                 self.sprite.sync_hit_box_to_texture()
 
             elif arcade.key.KEY_4 in keys:
@@ -252,6 +259,10 @@ class Detective:
                         if "ClothPart" in str(i.texture.file_path):
                             i.remove_from_sprite_lists()
                         self.collected_evidence.append(i)
+                if self.item == self.items[1]:
+                    for i in self.sprite_2.collides_with_list(self.location.handprints):
+                        if i not in self.collected_evidence:
+                            self.collected_evidence.append(i)
 
                 for i in self.sprite_2.collides_with_list(self.location.entries):
                     if i not in self.collected_evidence:
@@ -342,7 +353,7 @@ class Location:
             self.criminal.center_x = spawn_place.center_x
             self.criminal.center_y = spawn_place.center_y
 
-        self.objects.append(self.criminal)
+        # self.objects.append(self.criminal)
 
     def create_spawn(self):
         police_car = arcade.Sprite(get_path("PoliceCar.png"), (1, 1), self.wd.width / 30, self.wd.height / 2)
@@ -414,8 +425,7 @@ class Location:
                                             len(room[0].split('\n'))) * 20)
 
                         except Exception as e:
-                            print(e)
-                            print(rooms)
+                            pass
 
 
                 h = self.load_room(room[0], width, cur_height, wd, ht, self.rooms)
@@ -452,6 +462,105 @@ class Location:
                 sprite = arcade.Sprite(wall_texture, 1, x, wall_texture.height * i)
                 self.objects.append(sprite)
 
+    def cast_ray_to_wall(self, start_x, start_y, angle, step=2):
+        distance = 200
+        max_steps = int(distance / step)
+        cos_ = math.cos(angle)
+        sin_ = math.sin(angle)
+        for i in range(max_steps):
+            cur_distance = i * step
+            test_x = start_x + cur_distance * cos_
+            test_y = start_y + cur_distance * sin_
+            if test_x <= 0 or test_x >= self.wd.width or test_y <= 0 or test_y >= self.wd.height:
+                return test_x, test_y
+
+            hit_list = arcade.check_for_collision_with_list(arcade.SpriteSolidColor(1, 1, test_x, test_y),
+                                                            self.objects)
+
+            if hit_list:
+                return test_x, test_y
+
+        end_x = start_x + distance * cos_
+        end_y = start_y + distance * sin_
+        return end_x, end_y
+
+    def draw_flashlight(self, fragments_num=2):
+        arcade.draw_circle_filled(self.wd.player.sprite.center_x, self.wd.player.sprite.center_y,
+                                  max(self.wd.player.sprite.height, self.wd.player.sprite.width) / 2 + 10,
+                                  (255, 255, 255, 60))
+        detective = self.wd.player.sprite
+        half_light_angle = 0.5
+        new_pi = math.pi / 2 * 1.12
+        self.left_angle = -math.radians(detective.angle) - half_light_angle + new_pi
+        self.right_angle = -math.radians(detective.angle) + half_light_angle + new_pi
+        self.left_hit_x, self.left_hit_y = self.cast_ray_to_wall(detective.center_x,
+                                                                  detective.center_y,
+                                                                  self.left_angle)
+        self.right_hit_x, self.right_hit_y = self.cast_ray_to_wall(detective.center_x,
+                                                                         detective.center_y,
+                                                                         self.left_angle)
+        self.points2 = [(detective.center_x, detective.center_y), (self.left_hit_x, self.left_hit_y)]
+        for i in range(1, fragments_num):
+            angle = self.left_angle + (self.right_angle - self.left_angle) * i / fragments_num
+            hit_x, hit_y = self.cast_ray_to_wall(detective.center_x, detective.center_y, angle)
+            self.points2.append((hit_x, hit_y))
+
+        self.points2.append((self.right_hit_x, self.right_hit_y))
+
+        color = (157, 0, 214, 120) if self.wd.player.item == self.wd.player.items[1] else (255, 255, 255, 120)
+        arcade.draw_polygon_filled(sorted(self.points2), color)
+
+    def is_object_in_light(self, sprite):
+        detective = self.wd.player.sprite
+        half_w = sprite.width / 2
+        half_h = sprite.height / 2
+        corners = [(sprite.center_x - half_w, sprite.center_y - half_h),
+                   (sprite.center_x + half_w, sprite.center_y - half_h),
+                   (sprite.center_x - half_w, sprite.center_y + half_h),
+                   (sprite.center_x + half_w, sprite.center_y + half_h),
+                   (sprite.center_x, sprite.center_y)]
+
+        for cx, cy in corners:
+            dist = get_distance(detective.center_x, detective.center_y, cx, cy)
+            if dist <= 200:
+                if dist == 0:
+                    return True
+
+                try:
+                    v0 = [self.points2[1][0] - detective.center_x, self.points2[1][1] - detective.center_y]
+                    v1 = [self.points2[2][0] - detective.center_x, self.points2[2][1] - detective.center_y]
+                    v2 = [cx - detective.center_x, cy - detective.center_y]
+
+                    dot00 = v0[0] * v0[0] + v0[1] * v0[1]
+                    dot01 = v0[0] * v1[0] + v0[1] * v1[1]
+                    dot02 = v0[0] * v2[0] + v0[1] * v2[1]
+                    dot11 = v1[0] * v1[0] + v1[1] * v1[1]
+                    dot12 = v1[0] * v2[0] + v1[1] * v2[1]
+
+                    inv_denom = 1 / (dot00 * dot11 - dot01 * dot01)
+                    u = (dot11 * dot02 - dot01 * dot12) * inv_denom
+                    v = (dot00 * dot12 - dot01 * dot02) * inv_denom
+
+                    if (u >= 0) and (v >= 0) and (u + v <= 1):
+                        return True
+
+                except ZeroDivisionError:
+                    pass
+        return False
+
+    def get_objects_in_light(self):
+        objects = arcade.SpriteList()
+        for sprite in self.evidence_sprites:
+            if self.is_object_in_light(sprite):
+                objects.append(sprite)
+        if self.criminal_is_spawned and self.is_object_in_light(self.criminal):
+            objects.append(self.criminal)
+        if self.wd.player.item == self.wd.player.items[1]:
+            for sprite in self.handprints:
+                if self.is_object_in_light(sprite):
+                    objects.append(sprite)
+        return objects
+
     def draw(self):
         self.spawn_floor.draw()
         self.spawns_objects.draw()
@@ -459,9 +568,12 @@ class Location:
         self.interior.draw()
         self.entries.draw()
         self.objects.draw()
-        self.evidence_sprites.draw()
+        self.evidence_sprites.draw_hit_boxes((192, 255, 0))
+        self.get_objects_in_light().draw()
         self.bullets_sprites.draw()
         self.doors_sprites.draw_hit_boxes((255, 0, 0))
+        self.draw_flashlight()
+
         for point in self.points:
             arcade.draw_circle_filled(*point[:-1], radius=5, color=(255, 0, 0))
 
@@ -478,7 +590,11 @@ class Location:
             bullet.update(delta_time)
             if bullet.sprite.collides_with_list(self.spawns_objects) or bullet.sprite.collides_with_list(self.objects):
                 del_indexes.append(i)
-                self.bullets_sprites.remove(bullet.sprite)
+                try:
+                    self.bullets_sprites.remove(bullet.sprite)
+
+                except ValueError:
+                    pass
 
             if self.criminal_is_spawned and bullet.sprite.collides_with_sprite(self.criminal):
                 self.criminal.hp -= 20
@@ -488,7 +604,11 @@ class Location:
                         self.criminal.type["Rage"] += 0.1
 
         for ind in del_indexes:
-            del self.bullets[ind]
+            try:
+                del self.bullets[ind]
+
+            except IndexError:
+                pass
 
         if not self.criminal_is_spawned:
             self.time += delta_time
@@ -502,6 +622,7 @@ class Location:
 
     def load_evidence(self, evidence):
         self.evidence_sprites = arcade.SpriteList()
+        self.handprints = arcade.SpriteList()
         if evidence["forced entry"]:
             entry = self.entries.sprite_list[0]
             entry: arcade.Sprite
@@ -526,7 +647,7 @@ class Location:
             prints = arcade.Sprite(hand_print_texture, 1, interior_obj.center_x, interior_obj.center_y,
                                    randint(0, 360))
 
-            self.evidence_sprites.append(prints)
+            self.handprints.append(prints)
 
         cloth_part_texture = arcade.load_texture(get_path("ClothPart.png"))
         for i in range(randint(0, evidence["cloth part"])):
@@ -591,9 +712,7 @@ class Location:
                     self.floor.append(floor)
                 self.doors_sprites.append(sprite)
                 cur_room[1].append(sprite)
-                # self.points.append([sprite.center_x, sprite.center_y - 20, "d"])
                 self.points.append([sprite.center_x, sprite.center_y + 20, "D"])
-                # self.doors_points.append([sprite.center_x, sprite.center_y + 20, "d"])
                 self.doors_points.append([sprite.center_x, sprite.center_y - 20, "D"])
 
             elif s == "D":
@@ -604,8 +723,6 @@ class Location:
                 self.doors_sprites.append(sprite)
                 cur_room[1].append(sprite)
                 self.points.append([sprite.center_x, sprite.center_y - 20, "d"])
-                # self.points.append([sprite.center_x, sprite.center_y + 20, "D"])
-                # self.doors_points.append([sprite.center_x, sprite.center_y - 20, "d"])
                 self.doors_points.append([sprite.center_x, sprite.center_y + 20, "D"])
 
             elif s == "E":
@@ -618,7 +735,6 @@ class Location:
                 height += ht
                 width += sprite.width
                 self.entries.append(sprite)
-                # self.points.append([sprite.center_x + 20, sprite.center_y - 6, "P"])
                 continue
 
             else:
