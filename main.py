@@ -1,6 +1,3 @@
-import arcade
-from pyglet.event import EVENT_HANDLE_STATE
-
 from Classes import *
 
 SCREEN_WIDTH = 1920
@@ -100,11 +97,15 @@ class MainWindow(arcade.Window):
                 self.sprite_lst.append(self.player.sprite)
                 self.camera = arcade.Camera2D()
 
-
+            self.clear(color=arcade.color.BLACK)
             self.camera.use()
             self.game_location.draw()
             self.sprite_lst.draw()
+            arcade.draw_lbwh_rectangle_filled(0, 0, self.width, self.height, (0, 0, 0, 100))
+            # arcade.draw_circle_filled(self.player.sprite.center_x, self.player.sprite.center_y,
+            #                           max(self.player.sprite.height, self.player.sprite.width) / 2 + 10, (255, 255, 255, 60))
             self.player.draw()
+
 
         elif self.status == "Pause":
             if self.was != self.status:

@@ -4,6 +4,14 @@ import arcade
 import math
 
 
+def normalize_angle(angle):
+    return angle % (math.pi * 2)
+
+
+def get_angle_between(angle1, angle2):
+    diff = normalize_angle(angle1) - normalize_angle(angle2)
+    return min(diff, math.pi * 2 - diff)
+
 def get_path(file_name):
     directory = ""
     if file_name.endswith(".jpg") or file_name.endswith(".png"):
