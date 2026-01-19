@@ -230,6 +230,8 @@ class Detective(arcade.Sprite):
         self.sprite_2 = arcade.Sprite(get_path("DetectiveHitBoxImage.png"), 0.9, x, y)
         self.location = location
         self.collected_evidence = arcade.SpriteList()
+        self.newly_collected_evidence = []
+        self.checked_interior = arcade.SpriteList()
         self.is_dead = False
         self.DIE_ANIMATION_SPEED = 0.5
         self.die_animation_timer = 0
@@ -237,11 +239,7 @@ class Detective(arcade.Sprite):
         self.die_texture_ind = -1
 
     def draw(self):
-        draw_possibility_interaction(self.sprite_2, self.location.evidence_sprites, self.collected_evidence)
-        if self.item == self.items[1]:
-            draw_possibility_interaction(self.sprite_2, self.location.handprints, self.collected_evidence)
-        draw_possibility_interaction(self.sprite_2, self.location.exits, self.collected_evidence)
-        draw_possibility_interaction(self.sprite_2, self.location.entries, self.collected_evidence)
+        draw_possibility_interaction(self)
         x = self.wd.width - self.max_hp - 60 if self.center_x <= self.wd.width / 2 else self.wd.width - self.max_hp - 60 + (self.center_x - self.wd.width / 2)
         arcade.draw_lbwh_rectangle_outline(x, 10, self.max_hp + 5, 50,
                                            arcade.color.GRAY_BLUE)
@@ -264,7 +262,17 @@ class Detective(arcade.Sprite):
 
             x += item_text.content_width + 20
 
+        for ind, i in enumerate(self.newly_collected_evidence):
+            if i[0] >= 0.5:
+                del self.newly_collected_evidence[ind]
+
+            else:
+                evidence_text = arcade.Text(i[-1], i[1], i[2])
+                evidence_text.draw()
+
     def update(self, keys: list, delta_time=1/60):
+        for i in self.newly_collected_evidence:
+            i[0] += delta_time
         if self.hp <= 0 and not self.is_dead:
             if self.texture == self.die_animation_textures[-1]:
                 self.is_dead = True
@@ -305,13 +313,21 @@ class Detective(arcade.Sprite):
             if arcade.key.E in keys:
                 for i in self.sprite_2.collides_with_list(self.location.evidence_sprites):
                     if i not in self.collected_evidence:
-                        if "ClothPart" in str(i.texture.file_path):
+                        name = get_evidence_name(i)
+                        if "clothpart" in name:
                             i.remove_from_sprite_lists()
                         self.collected_evidence.append(i)
+                        self.newly_collected_evidence.append([0, i.center_x, i.center_y, name])
+
                 if self.item == self.items[1]:
                     for i in self.sprite_2.collides_with_list(self.location.handprints):
                         if i not in self.collected_evidence:
                             self.collected_evidence.append(i)
+                            self.newly_collected_evidence.append([0, i.center_x, i.center_y, get_evidence_name(i)])
+
+                for i in self.sprite_2.collides_with_list(self.location.interior):
+                    if i not in self.checked_interior:
+                        self.checked_interior.append(i)
 
                 for i in self.sprite_2.collides_with_list(self.location.entries):
                     if i not in self.collected_evidence:
@@ -678,7 +694,7 @@ class Location:
             entry.set_texture(1)
 
         shoe_print_texture = arcade.load_texture(get_path("Footprints.png"))
-        for i in range(randint(0, evidence["shoeprints"])):
+        for _ in range(randint(0, evidence["shoeprints"])):
             floor = choice(self.floor.sprite_list)
             while floor.collides_with_list(self.objects) or floor.collides_with_list(self.interior):
                 floor = choice(self.floor.sprite_list)
@@ -686,7 +702,7 @@ class Location:
             self.evidence_sprites.append(prints)
 
         hand_print_texture = arcade.load_texture(get_path("Handprint.png"))
-        for i in range(randint(0, evidence["handprints"])):
+        for _ in range(randint(0, evidence["handprints"])):
             interior_obj = choice(self.interior.sprite_list)
             path = str(interior_obj.texture.file_path)
             while "Wardrobe" in path or "Sink" in path or "Bath" in path or "TV" in path:
@@ -696,6 +712,13 @@ class Location:
                                    randint(0, 360))
 
             self.handprints.append(prints)
+
+        for _ in range(randint(1, 3)):
+            obj = choice(self.interior.sprite_list)
+            while obj in self.evidence_sprites.sprite_list:
+                obj = choice(self.interior.sprite_list)
+            obj.evidence = choice(["knife", "lock_picks", "button"])
+            self.evidence_sprites.append(obj)
 
         cloth_part_texture = arcade.load_texture(get_path("ClothPart.png"))
         for i in range(randint(0, evidence["cloth part"])):

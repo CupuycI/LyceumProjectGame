@@ -81,10 +81,41 @@ def check_collisions(object, lst, speed, delta_time):
             object.center_y -= speed * delta_time
 
 
-def draw_possibility_interaction(object, lst, collected_evidence):
-    for target in object.collides_with_list(lst):
-        if target not in collected_evidence:
-            set_image(get_path("Interaction.png"), target.center_x + object.width / 2, target.center_y + object.height / 2)
+def get_evidence_name(evidence):
+    if hasattr(evidence, "evidence"):
+        return evidence.evidence.replace("_", " ")
+
+    return str(evidence.texture.file_path).split("/")[-1].split(".")[0].lower().replace("_", " ")
+
+
+def draw_possibility_interaction(obj):
+    sprite = obj.sprite_2
+    location = obj.location
+    for target in sprite.collides_with_list(location.evidence_sprites):
+        if target not in obj.collected_evidence and not hasattr(target, "evidence"):
+            set_image(get_path("Interaction.png"), target.center_x + sprite.width / 2,
+                      target.center_y + sprite.height / 2)
+
+    if obj.item == "UVFlashlight":
+        for target in sprite.collides_with_list(location.handprints):
+            if target not in obj.collected_evidence and not hasattr(target, "evidence"):
+                set_image(get_path("Interaction.png"), target.center_x + sprite.width / 2,
+                          target.center_y + sprite.height / 2)
+
+    for target in sprite.collides_with_list(location.exits):
+        if target not in obj.collected_evidence and not hasattr(target, "evidence"):
+            set_image(get_path("Interaction.png"), target.center_x + sprite.width / 2,
+                      target.center_y + sprite.height / 2)
+
+    for target in sprite.collides_with_list(location.entries):
+        if target not in obj.collected_evidence and not hasattr(target, "evidence"):
+            set_image(get_path("Interaction.png"), target.center_x + sprite.width / 2,
+                      target.center_y + sprite.height / 2)
+
+    for target in sprite.collides_with_list(location.interior):
+        if target not in obj.checked_interior:
+            set_image(get_path("Interaction1.png"), target.center_x + sprite.width / 2,
+                      target.center_y + sprite.height / 2)
 
 
 def move_camera_to_player(wd, camera_speed):
