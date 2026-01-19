@@ -88,7 +88,7 @@ def draw_possibility_interaction(object, lst, collected_evidence):
 
 
 def move_camera_to_player(wd, camera_speed):
-    target = [max(wd.player.sprite.center_x, wd.center_x), wd.center_y]
+    target = [max(wd.player.center_x, wd.center_x), wd.center_y]
     wd.camera.position = arcade.math.lerp_2d(wd.camera.position, target, camera_speed)
 
 
@@ -107,7 +107,7 @@ def check_doors(sprite, location):
                 i.center_x -= location.opened_door_texture.width * 1.05
                 i.center_y -= location.opened_door_texture.height / 2.5
 
-        elif (abs(location.wd.player.sprite.center_x - i.center_x) > 80 and
+        elif (abs(location.wd.player.center_x - i.center_x) > 80 and
               (not location.criminal_is_spawned or abs(location.criminal.center_x - i.center_x) > 80)):
             if len(i.textures) >= 2:
                 i.set_texture(0)

@@ -5,8 +5,6 @@ from math import atan2
 from random import choice, randint, random
 
 import arcade
-
-from evidence_creater import evidence
 from functions import  *
 
 
@@ -109,14 +107,14 @@ class Criminal(arcade.Sprite):
     def attack(self):
         self.set_texture(1)
         cur_room = self.location.get_current_room(self)
-        if cur_room and cur_room != self.location.get_current_room(self.wd.player.sprite):
+        if cur_room and cur_room != self.location.get_current_room(self.wd.player):
             door = cur_room[1].sprite_list[0]
             target = min(self.location.doors_points, key=(lambda i: get_distance(i[0], i[1], door.center_x, door.center_y)))
             self.main_x = target[0]
             self.main_y = target[1]
             return
-        self.main_x = self.wd.player.sprite.center_x
-        self.main_y = self.wd.player.sprite.center_y
+        self.main_x = self.wd.player.center_x
+        self.main_y = self.wd.player.center_y
 
     def surrender(self):
         self.main_x, self.main_y = self.location.police_car.center_x, self.location.police_car.center_y
@@ -212,20 +210,31 @@ class Criminal(arcade.Sprite):
         self.angle = math.degrees(angle)
 
 
-class Detective:
+class Detective(arcade.Sprite):
     def __init__(self, wd: arcade.Window, x, y, location, hp=100, speed=100):
+        super().__init__()
         self.wd = wd
         self.x = x
         self.y = y
         self.hp = hp
+        self.max_hp = hp
         self.speed = speed
         self.items = ["Pistol", "UVFlashlight", "Handcuffs", "Hands"]
         self.item = "Hands"
-        self.sprite = arcade.Sprite(get_path("Detective.png"), 0.9, x, y)
-        self.sprite.append_texture(arcade.load_texture(get_path("DetectiveWithGun.png")))
+        self.scale = 0.9
+        self.center_x = x
+        self.center_y = y
+        self.append_texture(arcade.load_texture(get_path("Detective.png")))
+        self.set_texture(0)
+        self.append_texture(arcade.load_texture(get_path("DetectiveWithGun.png")))
         self.sprite_2 = arcade.Sprite(get_path("DetectiveHitBoxImage.png"), 0.9, x, y)
         self.location = location
         self.collected_evidence = arcade.SpriteList()
+        self.is_dead = False
+        self.DIE_ANIMATION_SPEED = 0.5
+        self.die_animation_timer = 0
+        self.die_animation_textures = [arcade.load_texture(get_path(f"Detective{i}.png")) for i in range(2)]
+        self.die_texture_ind = -1
 
     def draw(self):
         draw_possibility_interaction(self.sprite_2, self.location.evidence_sprites, self.collected_evidence)
@@ -233,25 +242,65 @@ class Detective:
             draw_possibility_interaction(self.sprite_2, self.location.handprints, self.collected_evidence)
         draw_possibility_interaction(self.sprite_2, self.location.exits, self.collected_evidence)
         draw_possibility_interaction(self.sprite_2, self.location.entries, self.collected_evidence)
-        self.sprite_2.draw_hit_box((255, 0, 0))
+        x = self.wd.width - self.max_hp - 60 if self.center_x <= self.wd.width / 2 else self.wd.width - self.max_hp - 60 + (self.center_x - self.wd.width / 2)
+        arcade.draw_lbwh_rectangle_outline(x, 10, self.max_hp + 5, 50,
+                                           arcade.color.GRAY_BLUE)
+        hp_color = arcade.color.GREEN if self.hp >= self.max_hp / 4 * 3 else (
+            arcade.color.YELLOW) if self.hp >= self.max_hp / 2 else arcade.color.RED
+        arcade.draw_lbwh_rectangle_filled(x + 2, 13, self.hp, 45, hp_color)
+        x = 60 if self.center_x <= self.wd.width / 2 else self.center_x - self.wd.width / 2 + 60
+        for i in range(1, 5):
+            bottom = 40
+            item_text = arcade.Text(self.items[i - 1], 0, bottom + 15, anchor_x="center", anchor_y="center")
 
+            item_text.x = x + item_text.content_width / 2 + 5
+            if self.item == item_text.text:
+                arcade.draw_lbwh_rectangle_filled(x, bottom, item_text.content_width + 10, 30,
+                                                  arcade.color.GRAY_BLUE)
+            arcade.draw_lbwh_rectangle_outline(x, bottom, item_text.content_width + 10, 30, arcade.color.GRAY_BLUE)
+            text = arcade.Text(str(i), item_text.x, bottom - 10, anchor_x="center", anchor_y="center")
+            item_text.draw()
+            text.draw()
 
-    def update(self, keys: list, delta_time=False):
-        if keys and delta_time:
+            x += item_text.content_width + 20
+
+    def update(self, keys: list, delta_time=1/60):
+        if self.hp <= 0 and not self.is_dead:
+            if self.texture == self.die_animation_textures[-1]:
+                self.is_dead = True
+                return
+
+            if self.die_animation_timer >= self.DIE_ANIMATION_SPEED:
+                self.die_animation_timer = 0
+                self.die_texture_ind += 1
+                self.texture = self.die_animation_textures[self.die_texture_ind]
+
+            else:
+                self.die_animation_timer += delta_time
+            return
+
+        if self.is_dead:
+            return
+        if keys:
             if arcade.key.KEY_1 in keys:
                 self.item = self.items[0]
-                self.sprite.set_texture(1)
-                self.sprite.sync_hit_box_to_texture()
+                self.set_texture(1)
+                self.sync_hit_box_to_texture()
 
             elif arcade.key.KEY_2 in keys:
                 self.item = self.items[1]
-                self.sprite.set_texture(0)
-                self.sprite.sync_hit_box_to_texture()
+                self.set_texture(0)
+                self.sync_hit_box_to_texture()
+
+            elif arcade.key.KEY_3 in keys:
+                self.item = self.items[2]
+                self.set_texture(0)
+                self.sync_hit_box_to_texture()
 
             elif arcade.key.KEY_4 in keys:
                 self.item = self.items[3]
-                self.sprite.set_texture(0)
-                self.sprite.sync_hit_box_to_texture()
+                self.set_texture(0)
+                self.sync_hit_box_to_texture()
 
             if arcade.key.E in keys:
                 for i in self.sprite_2.collides_with_list(self.location.evidence_sprites):
@@ -281,42 +330,46 @@ class Detective:
             speed = self.speed / math.sqrt(2) if len(keys) > 1 else self.speed
             for key in keys:
                 if key == arcade.key.W:
-                    self.sprite.center_y += speed * delta_time
+                    self.center_y += speed * delta_time
 
                 elif key == arcade.key.S:
-                    self.sprite.center_y -= speed * delta_time
+                    self.center_y -= speed * delta_time
 
                 elif key == arcade.key.A:
-                    self.sprite.center_x -= speed * delta_time
+                    self.center_x -= speed * delta_time
 
                 elif key == arcade.key.D:
-                    self.sprite.center_x += speed * delta_time
-                check_doors(self.sprite, self.location)
+                    self.center_x += speed * delta_time
+                check_doors(self, self.location)
 
-                check_collisions(self.sprite, self.location.spawns_objects, speed, delta_time)
-                check_collisions(self.sprite, self.location.objects, speed, delta_time)
-                check_collisions(self.sprite, self.location.interior, speed, delta_time)
-                check_collisions(self.sprite, self.location.entries, speed, delta_time)
+                print("#")
+                check_collisions(self, self.location.spawns_objects, speed, delta_time)
+                check_collisions(self, self.location.objects, speed, delta_time)
+                check_collisions(self, self.location.interior, speed, delta_time)
+                check_collisions(self, self.location.entries, speed, delta_time)
 
-                self.sprite_2.center_x = self.sprite.center_x
-                self.sprite_2.center_y = self.sprite.center_y
+                print(True)
+                self.sprite_2.center_x = self.center_x
+                self.sprite_2.center_y = self.center_y
 
 
     def update_angle(self, x, y):
-        t_x, t_y = get_speed(self.sprite.center_x, self.sprite.center_y, self.speed, x, y)
+        if self.hp <= 0:
+            return
+        t_x, t_y = get_speed(self.center_x, self.center_y, self.speed, x, y)
         angle = atan2(t_x, t_y)
-        self.sprite.angle = math.degrees(angle)
-        self.sprite_2.angle = self.sprite.angle
+        self.angle = math.degrees(angle)
+        self.sprite_2.angle = self.angle
 
 
-class Bullet:
+class Bullet(arcade.Sprite):
     def __init__(self, x, y, speed, t_x, t_y):
-        self.sprite = arcade.Sprite(get_path("Bullet.png"), (1, 1), x, y)
+        super().__init__(get_path("Bullet.png"), (1, 1), x, y)
         self.speed_x, self.speed_y = get_speed(x, y, speed, t_x, t_y)
 
     def update(self, delta_time):
-        self.sprite.center_x += self.speed_x * delta_time
-        self.sprite.center_y += self.speed_y * delta_time
+        self.center_x += self.speed_x * delta_time
+        self.center_y += self.speed_y * delta_time
 
 
 class Location:
@@ -345,7 +398,7 @@ class Location:
 
     def spawn_criminal(self):
         self.criminal_is_spawned = True
-        room = choice([i for i in self.rooms if not self.wd.player.sprite.collides_with_list(i[0])])
+        room = choice([i for i in self.rooms if not self.wd.player.collides_with_list(i[0])])
         spawn_place = choice(room[0])
         self.criminal = Criminal(self.wd, spawn_place.center_x, spawn_place.center_y, self)
         while self.criminal.collides_with_list(self.interior) or self.criminal.collides_with_list(self.objects):
@@ -485,10 +538,10 @@ class Location:
         return end_x, end_y
 
     def draw_flashlight(self, fragments_num=2):
-        arcade.draw_circle_filled(self.wd.player.sprite.center_x, self.wd.player.sprite.center_y,
-                                  max(self.wd.player.sprite.height, self.wd.player.sprite.width) / 2 + 10,
+        arcade.draw_circle_filled(self.wd.player.center_x, self.wd.player.center_y,
+                                  max(self.wd.player.height, self.wd.player.width) / 2 + 10,
                                   (255, 255, 255, 60))
-        detective = self.wd.player.sprite
+        detective = self.wd.player
         half_light_angle = 0.5
         new_pi = math.pi / 2 * 1.12
         self.left_angle = -math.radians(detective.angle) - half_light_angle + new_pi
@@ -511,7 +564,7 @@ class Location:
         arcade.draw_polygon_filled(sorted(self.points2), color)
 
     def is_object_in_light(self, sprite):
-        detective = self.wd.player.sprite
+        detective = self.wd.player
         half_w = sprite.width / 2
         half_h = sprite.height / 2
         corners = [(sprite.center_x - half_w, sprite.center_y - half_h),
@@ -584,31 +637,26 @@ class Location:
             self.criminal.draw()
 
     def update(self, delta_time):
-        del_indexes = []
-        for i in range(len(self.bullets)):
-            bullet = self.bullets[i]
-            bullet.update(delta_time)
-            if bullet.sprite.collides_with_list(self.spawns_objects) or bullet.sprite.collides_with_list(self.objects):
-                del_indexes.append(i)
-                try:
-                    self.bullets_sprites.remove(bullet.sprite)
+        for bullet in self.bullets_sprites:
+            for _ in range(4):
+                bullet.update(delta_time)
+                if bullet.collides_with_list(self.spawns_objects) or bullet.collides_with_list(self.objects):
+                    try:
+                        bullet.remove_from_sprite_lists()
+                        break
 
-                except ValueError:
-                    pass
+                    except ValueError:
+                        pass
 
-            if self.criminal_is_spawned and bullet.sprite.collides_with_sprite(self.criminal):
-                self.criminal.hp -= 20
-                if self.criminal.type["Cool-headedness"] < 0.6:
-                    self.criminal.type["Fear"] += 0.2
-                    if random():
-                        self.criminal.type["Rage"] += 0.1
+                if self.criminal_is_spawned and bullet.collides_with_sprite(self.criminal):
+                    self.criminal.hp -= 20
+                    if self.criminal.type["Cool-headedness"] < 0.6:
+                        self.criminal.type["Fear"] += 0.2
+                        if random():
+                            self.criminal.type["Rage"] += 0.1
 
-        for ind in del_indexes:
-            try:
-                del self.bullets[ind]
-
-            except IndexError:
-                pass
+                    bullet.remove_from_sprite_lists()
+                    break
 
         if not self.criminal_is_spawned:
             self.time += delta_time

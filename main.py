@@ -94,7 +94,7 @@ class MainWindow(arcade.Window):
                 self.game_location = Location(self)
                 self.player = Detective(self, 200, self.height / 2, self.game_location)
                 self.sprite_lst = arcade.SpriteList()
-                self.sprite_lst.append(self.player.sprite)
+                self.sprite_lst.append(self.player)
                 self.camera = arcade.Camera2D()
 
             self.clear(color=arcade.color.BLACK)
@@ -149,8 +149,8 @@ class MainWindow(arcade.Window):
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
         if self.status == "Game" and self.player.item == self.player.items[0]:
             x += self.camera.position.x - self.center_x
-            bullet = Bullet(self.player.sprite.center_x, self.player.sprite.center_y, 2500, x, y)
-            self.game_location.bullets_sprites.append(bullet.sprite)
+            bullet = Bullet(self.player.center_x, self.player.center_y, 600, x, y)
+            self.game_location.bullets_sprites.append(bullet)
             self.game_location.bullets.append(bullet)
         if button == arcade.MOUSE_BUTTON_LEFT:
             for btn in self.buttons_lst:
