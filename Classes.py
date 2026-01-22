@@ -40,7 +40,7 @@ class MyButton:
 
 
 class Criminal(arcade.Sprite):
-    def __init__(self, wd, x: float, y: float, location, hp=100, speed=100):
+    def __init__(self, wd, x: float, y: float, location, hp=100, speed=90):
         super().__init__(get_path("Criminal.png"), 0.9, x, y)
         level = wd.level
         self.wd = wd
@@ -54,6 +54,7 @@ class Criminal(arcade.Sprite):
         self.last_target = ""
         self.status = ""
         self.append_texture(arcade.load_texture(get_path("Criminal_with_knife.png")))
+        self.append_texture(arcade.load_texture(get_path("Criminal0.png")))
         with open("criminals.json", "r", encoding="utf8") as f:
             self.type = json.load(f)[level]
 
@@ -63,12 +64,20 @@ class Criminal(arcade.Sprite):
         self.MIN_ATTACK_DURATION = 10
         self.attack_cooldown_timer = 0
         self.attack_timer = 0
+        self.HIT_COOLDOWN = 1.5
+        self.hit_timer = 0
         self.MAX_HIDE_COOLDOWN = 30
         self.MIN_HIDE_COOLDOWN = 10
         self.MAX_HIDE_DURATION = 40
         self.MIN_HIDE_DURATION = 5
         self.hide_cooldown_timer = 0
         self.hide_timer = 0
+        self.animation_textures = []
+        for i in range(2):
+            self.animation_textures.append(arcade.load_texture(get_path(f'Criminal{i}.png')))
+
+        self.ANIMATION_COOLDOWN = 0.5
+        self.animation_timer = 0
 
     def hide(self):
         self.set_texture(0)
@@ -118,9 +127,16 @@ class Criminal(arcade.Sprite):
 
     def surrender(self):
         self.main_x, self.main_y = self.location.police_car.center_x, self.location.police_car.center_y
+        self.set_texture(2)
 
     def update(self, delta_time: float = 1 / 60, *args, **kwargs) -> None:
         if self.hp <= 0:
+            if self.cur_texture_index < len(self.animation_textures):
+                if self.animation_timer >= self.ANIMATION_COOLDOWN:
+                    self.animation_timer = 0
+                    self.texture = self.animation_textures[self.cur_texture_index + 1]
+                else:
+                    self.animation_timer += delta_time
             return
 
         elif self.hp <= 20 or self.type["Fear"] > 0.8 and self.type["Cool-headedness"] < 0.5:
@@ -128,6 +144,13 @@ class Criminal(arcade.Sprite):
             return
         self.update_targets()
         self.update_timers()
+        if self.collides_with_sprite(self.wd.player) and self.texture == self.textures[1]:
+            if self.hit_timer >= self.HIT_COOLDOWN:
+                self.hit_timer = 0
+                self.wd.player.hp = max(self.wd.player.hp - 20, 0)
+            else:
+                self.hit_timer += delta_time
+
         nearest_points = sorted(self.location.points, key=(lambda i: get_distance(i[0], i[1], self.center_x, self.center_y)))[:2]
         self.cur_target = min(nearest_points, key=(lambda i: get_distance(i[0], i[1], self.main_x, self.main_y)))
         if (get_distance(self.center_x, self.center_y, self.main_x, self.main_y) <=
@@ -146,8 +169,6 @@ class Criminal(arcade.Sprite):
         check_collisions(self, self.location.objects, abs(self.change_x), delta_time)
         check_collisions(self, self.location.interior, abs(self.change_y), delta_time)
         self.update_angle()
-        print("[Criminal's Test] -> target's coords: ", self.t_x, self.t_y)
-        print("[Criminal's Test] -> current coords: ", self.center_x, self.center_y)
 
     def update_timers(self):
         if self.status == "hiding":
@@ -821,4 +842,3 @@ class Location:
         if not is_hallway:
             rooms.append(cur_room)
         return height
-
