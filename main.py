@@ -1,3 +1,6 @@
+import arcade.color
+from pyglet.graphics import Batch
+
 from Classes import *
 
 SCREEN_WIDTH = 1920
@@ -123,6 +126,51 @@ class MainWindow(arcade.Window):
 
             for btn in self.buttons_lst:
                 btn.draw()
+
+        elif self.status == "GameEnd":
+            if self.was != self.status:
+                self.was = self.status
+                self.buttons_lst = [MyButton(self, SCREEN_WIDTH / 25, SCREEN_HEIGHT / 1.25, "В меню",
+                                             (lambda: change_status(self, "MainMenu")),
+                                             (125, 125, 125), (30, 30, 255), 30)]
+
+            font_size = 20
+            text1 = arcade.Text(f"Зафиксировано улик:           "
+                                f"{len(self.player.collected_evidence.sprite_list)}/"
+                                f"{len(self.game_location.evidence_sprites.sprite_list) +
+                                   len([i for i in self.player.collected_evidence.sprite_list
+                                        if "ClothPart" in str(i.texture.file_path)]) +
+                                   len(self.game_location.handprints.sprite_list)}",
+                                250, self.height - 300, font_size=font_size)
+            text2 = arcade.Text(f"Преступник:                            "
+                                f"{'Ликвидирован' if self.game_location.criminal_is_spawned and
+                                                     self.game_location.criminal.hp <= 0 else 'Сбежал' if
+                                self.game_location.criminal_is_spawned
+                                else 'Не был обнаружен на месте преступления'}", 250, self.height - 350,
+                                font_size=font_size)
+            text3 = arcade.Text(f"Уровень сложности:             {self.level}", 250, self.height - 400,
+                                font_size=font_size)
+            text4 = arcade.Text(f"Размер локации:                   {self.game_size}", 250, self.height - 450,
+                                font_size=font_size)
+            text5 = arcade.Text(f"Детектив:                                 "
+                                f"{'Жив' if self.player.hp > 0 else 'Погиб'}",
+                                250, self.height - 500, font_size=font_size)
+            set_background("GameEndBackground.jpg", SCREEN_WIDTH, SCREEN_HEIGHT)
+            arcade.draw_lbwh_rectangle_filled(200, 100, self.width - 400, self.height - 200,
+                                              (119, 119, 119, 160))
+            arcade.draw_lbwh_rectangle_outline(198, 98, self.width - 396, self.height - 196,
+                                               (29, 29, 29), 10)
+
+            text1.draw()
+            text2.draw()
+            text3.draw()
+            text4.draw()
+            text5.draw()
+
+
+            for btn in self.buttons_lst:
+                btn.draw()
+
 
     def on_update(self, delta_time: float):
         try:

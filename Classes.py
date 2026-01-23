@@ -258,6 +258,8 @@ class Detective(arcade.Sprite):
         self.die_animation_timer = 0
         self.die_animation_textures = [arcade.load_texture(get_path(f"Detective{i}.png")) for i in range(2)]
         self.die_texture_ind = -1
+        self.DIE_COOLDOWN = 1
+        self.die_timer = 0
 
     def draw(self):
         draw_possibility_interaction(self)
@@ -309,6 +311,10 @@ class Detective(arcade.Sprite):
             return
 
         if self.is_dead:
+            if self.die_timer >= self.DIE_COOLDOWN:
+                change_status(self.wd, "GameEnd")
+            else:
+                self.die_timer += delta_time
             return
         if keys:
             if arcade.key.KEY_1 in keys:
@@ -360,9 +366,8 @@ class Detective(arcade.Sprite):
                         self.collected_evidence.append(i)
 
                 if self.sprite_2.collides_with_list(self.location.exits):
-                    change_status(self.wd, "MainMenu")
+                    change_status(self.wd, "GameEnd")
                     return
-
 
             speed = self.speed / math.sqrt(2) if len(keys) > 1 else self.speed
             for key in keys:
