@@ -99,14 +99,15 @@ class MainWindow(arcade.Window):
                 self.sprite_lst = arcade.SpriteList()
                 self.sprite_lst.append(self.player)
                 self.camera = arcade.Camera2D()
+                # self.particles = []
 
             self.clear(color=arcade.color.BLACK)
             self.camera.use()
             self.game_location.draw()
             self.sprite_lst.draw()
             arcade.draw_lbwh_rectangle_filled(0, 0, self.width, self.height, (0, 0, 0, 100))
-            # arcade.draw_circle_filled(self.player.sprite.center_x, self.player.sprite.center_y,
-            #                           max(self.player.sprite.height, self.player.sprite.width) / 2 + 10, (255, 255, 255, 60))
+            # for i in self.particles:
+            #     i.draw()
             self.player.draw()
 
 
@@ -179,6 +180,15 @@ class MainWindow(arcade.Window):
                 self.game_location.update(delta_time)
                 move_camera_to_player(self, 0.1)
 
+                # particles_copy = self.particles.copy()
+                # for e in particles_copy:
+                #     e.update(delta_time)
+                #
+                # for e in particles_copy:
+                #     if e.can_reap():
+                #         self.particles.remove(e)
+
+
         except AttributeError as e:
             print(e)
 
@@ -200,6 +210,7 @@ class MainWindow(arcade.Window):
             bullet = Bullet(self.player.center_x, self.player.center_y, 600, x, y)
             self.game_location.bullets_sprites.append(bullet)
             self.game_location.bullets.append(bullet)
+            # self.particles.append(make_wall_particles(self.player.center_x, self.player.center_y))
         if button == arcade.MOUSE_BUTTON_LEFT:
             for btn in self.buttons_lst:
                 btn.on_press()

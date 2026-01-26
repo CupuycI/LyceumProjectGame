@@ -1,7 +1,11 @@
 import os
 import sys
+from random import randint, uniform, choice
+
 import arcade
 import math
+
+from arcade.particles import Emitter, EmitBurst, FadeParticle
 
 
 def normalize_angle(angle):
@@ -151,3 +155,16 @@ def check_doors(sprite, location):
 
 def get_distance(x1, y1, x2, y2):
     return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
+
+SPARK_TEX = [
+    arcade.make_soft_circle_texture(8, arcade.color.GRAY)
+]
+
+
+def make_wall_particles(x, y, count=80):
+    return Emitter(center_xy=(x, y), emit_controller=EmitBurst(count),
+                   particle_factory=lambda e: FadeParticle(
+        filename_or_texture=choice(SPARK_TEX), change_xy=arcade.math.rand_in_rect(arcade.Rect(*arcade.LBWH(-2, -2, 2, 2))),
+        lifetime=uniform(0.2, 0.3), start_alpha=255, end_alpha=0, scale=uniform(0.6, 1))
+                   )

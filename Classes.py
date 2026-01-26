@@ -433,6 +433,7 @@ class Location:
         self.opened_door_texture_2 = arcade.load_texture(get_path("OpenedDoor2.png"))
         self.time = 0
         self.criminal_is_spawned = False
+        self.particles = []
 
     def get_current_room(self, sprite):
         cur_room = [i for i in self.rooms if sprite.collides_with_list(i[0])]
@@ -678,6 +679,9 @@ class Location:
         if self.criminal_is_spawned:
             self.criminal.draw()
 
+        for i in self.particles:
+            i.draw()
+
     def update(self, delta_time):
         for bullet in self.bullets_sprites:
             for _ in range(4):
@@ -685,6 +689,7 @@ class Location:
                 if bullet.collides_with_list(self.spawns_objects) or bullet.collides_with_list(self.objects):
                     try:
                         bullet.remove_from_sprite_lists()
+                        self.particles.append(make_wall_particles(bullet.center_x, bullet.center_y))
                         break
 
                     except ValueError:
@@ -709,6 +714,12 @@ class Location:
 
         else:
             self.criminal.update(delta_time)
+
+        copy_particles = self.particles.copy()
+        for i in copy_particles:
+            i.update(delta_time)
+            if i.can_reap():
+                self.particles.remove(i)
 
     def load_evidence(self, evidence):
         self.evidence_sprites = arcade.SpriteList()
