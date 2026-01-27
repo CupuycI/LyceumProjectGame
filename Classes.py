@@ -1,8 +1,7 @@
 import json
-import math
 from itertools import product
 from math import atan2
-from random import choice, randint, random
+from random import random, randint
 
 import arcade
 from arcade.future.light import Light, LightLayer
@@ -435,13 +434,6 @@ class Location:
         self.time = 0
         self.criminal_is_spawned = False
         self.particles = []
-        # self.light_layer = LightLayer(self.wd.width, self.wd.height)
-        # self.light_layer.set_background_color(arcade.color.BLACK)
-        # self.light_mode = "soft"
-        # self.player_light = Light(self.wd.player.center_x, self.wd.player.center_y, self.wd.player.width,
-        #                           arcade.color.WHITE, self.light_mode)
-        #
-        # self.light_layer.add(self.player_light)
         self.light_mode = "soft"
 
     def get_current_room(self, sprite):
@@ -589,9 +581,6 @@ class Location:
         return end_x, end_y
 
     def create_lights(self, fragments_num=2):
-        # arcade.draw_circle_filled(self.wd.player.center_x, self.wd.player.center_y,
-        #                           max(self.wd.player.height, self.wd.player.width) / 2 + 10,
-        #                           (255, 255, 255, 60))
         self.light_layer = LightLayer(self.wd.width, self.wd.height)
 
         detective = self.wd.player
@@ -606,7 +595,7 @@ class Location:
         self.right_hit_x, self.right_hit_y = self.cast_ray_to_wall(detective.center_x,
                                                                          detective.center_y,
                                                                          self.right_angle)
-        self.points2 = [(detective.center_x, detective.center_y)]#, (self.left_hit_x, self.left_hit_y)]
+        self.points2 = [(detective.center_x, detective.center_y)]
         for i in range(1, fragments_num):
             angle = self.left_angle + (self.right_angle - self.left_angle) * i / fragments_num
             hit_x, hit_y = self.cast_ray_to_wall(detective.center_x, detective.center_y, angle)
@@ -623,86 +612,14 @@ class Location:
             self.points2.append((hit_x, hit_y))
             hit_x, hit_y = self.cast_ray_to_wall(detective.center_x, detective.center_y, angle, distance=130)
             self.points2.append((hit_x, hit_y))
-            # hit_x, hit_y = self.cast_ray_to_wall(detective.center_x, detective.center_y, angle, distance=150)
-            # self.points2.append((hit_x, hit_y))
-            # hit_x, hit_y = self.cast_ray_to_wall(detective.center_x, detective.center_y, angle, distance=170)
-            # self.points2.append((hit_x, hit_y))
-
-        #self.points2.append((self.right_hit_x, self.right_hit_y))
 
         color = (157, 0, 214, 120) if self.wd.player.item == self.wd.player.items[1] else (255, 255, 255, 120)
-        #arcade.draw_polygon_filled(sorted(self.points2), color)
         for i in self.points2:
             self.light_layer.add(Light(i[0], i[1], 40, color, mode=self.light_mode))
-
-        # self.light_layer.add(Light(self.police_car.center_x + 80, self.police_car.center_y, 80,
-        #                            arcade.color.DARK_BLUE))
-        # self.light_layer.add(Light(self.police_car.center_x - 80, self.police_car.center_y, 80,
-        #                            arcade.color.DARK_RED))
-        # self.light_layer.add(Light(self.police_car.center_x + 80, self.police_car.center_y - 30, 80,
-        #                            arcade.color.DARK_BLUE))
         self.light_layer.add(Light(self.police_car.center_x, self.police_car.center_y, 150,
                                    arcade.color.DARK_BLUE))
 
-    def is_object_in_light(self, sprite):
-        detective = self.wd.player
-        half_w = sprite.width / 2
-        half_h = sprite.height / 2
-        corners = [(sprite.center_x - half_w, sprite.center_y - half_h),
-                   (sprite.center_x + half_w, sprite.center_y - half_h),
-                   (sprite.center_x - half_w, sprite.center_y + half_h),
-                   (sprite.center_x + half_w, sprite.center_y + half_h),
-                   (sprite.center_x, sprite.center_y)]
-
-        for cx, cy in corners:
-            dist = get_distance(detective.center_x, detective.center_y, cx, cy)
-            if dist <= 200:
-                if dist == 0:
-                    return True
-
-                try:
-                    v0 = [self.points2[1][0] - detective.center_x, self.points2[1][1] - detective.center_y]
-                    v1 = [self.points2[2][0] - detective.center_x, self.points2[2][1] - detective.center_y]
-                    v2 = [cx - detective.center_x, cy - detective.center_y]
-
-                    dot00 = v0[0] * v0[0] + v0[1] * v0[1]
-                    dot01 = v0[0] * v1[0] + v0[1] * v1[1]
-                    dot02 = v0[0] * v2[0] + v0[1] * v2[1]
-                    dot11 = v1[0] * v1[0] + v1[1] * v1[1]
-                    dot12 = v1[0] * v2[0] + v1[1] * v2[1]
-
-                    inv_denom = 1 / (dot00 * dot11 - dot01 * dot01)
-                    u = (dot11 * dot02 - dot01 * dot12) * inv_denom
-                    v = (dot00 * dot12 - dot01 * dot02) * inv_denom
-
-                    if (u >= 0) and (v >= 0) and (u + v <= 1):
-                        return True
-
-                except ZeroDivisionError:
-                    pass
-        return False
-
-    def get_objects_in_light(self):
-        objects = arcade.SpriteList()
-        for sprite in self.evidence_sprites:
-            if self.is_object_in_light(sprite):
-                objects.append(sprite)
-        if self.criminal_is_spawned and self.is_object_in_light(self.criminal):
-            objects.append(self.criminal)
-        if self.wd.player.item == self.wd.player.items[1]:
-            for sprite in self.handprints:
-                if self.is_object_in_light(sprite):
-                    objects.append(sprite)
-        return objects
-
     def draw(self):
-        # self.light_layer = LightLayer(self.wd.width, self.wd.height)
-        # self.light_layer.set_background_color(arcade.color.BLACK)
-        # self.light_mode = "soft"
-        # self.player_light = Light(self.wd.player.center_x, self.wd.player.center_y, self.wd.player.width,
-        #                           arcade.color.WHITE, self.light_mode)
-        #
-        # self.light_layer.add(self.player_light)
         self.create_lights()
         with self.light_layer:
             self.spawn_floor.draw()
@@ -715,16 +632,6 @@ class Location:
             self.evidence_sprites.draw()
             if self.wd.player.item == self.wd.player.items[1]: # UVFlashlight
                 self.handprints.draw()
-            # self.get_objects_in_light().draw()
-            self.bullets_sprites.draw()
-            self.doors_sprites.draw_hit_boxes((255, 0, 0))
-            # self.draw_flashlight()
-
-            for point in self.points:
-                arcade.draw_circle_filled(*point[:-1], radius=5, color=(255, 0, 0))
-
-            for point in self.doors_points:
-                arcade.draw_circle_filled(*point[:-1], radius=5, color=(255, 0, 0))
 
             self.criminal_list.draw()
 
@@ -733,12 +640,10 @@ class Location:
             self.criminal.draw_hit_box(color=(192, 255, 0))
 
         self.evidence_sprites.draw_hit_boxes((192, 255, 0))
-        # if self.criminal_is_spawned and self.is_object_in_light(self.criminal):
-        #     print("##$", True)
-        #     self.criminal.draw()
-
         for i in self.particles:
             i.draw()
+
+        self.bullets_sprites.draw()
 
 
     def update(self, delta_time):

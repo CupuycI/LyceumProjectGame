@@ -1,5 +1,4 @@
 import arcade.color
-from pyglet.graphics import Batch
 
 from Classes import *
 
@@ -91,23 +90,22 @@ class MainWindow(arcade.Window):
                 btn.draw()
 
         elif self.status == "Game":
-            if "Pause" != self.was != "Game":
-                self.was = self.status
+            if self.was != "Game":
                 self.keys = []
-                self.game_location = Location(self)
-                self.player = Detective(self, 200, self.height / 2, self.game_location)
-                self.sprite_lst = arcade.SpriteList()
-                self.sprite_lst.append(self.player)
-                self.camera = arcade.Camera2D()
-                # self.particles = []
+                if self.was != "Pause":
+                    self.game_location = Location(self)
+                    self.player = Detective(self, 200, self.height / 2, self.game_location)
+                    self.sprite_lst = arcade.SpriteList()
+                    self.sprite_lst.append(self.player)
+                    self.camera = arcade.Camera2D()
+
+                self.was = self.status
 
             self.clear(color=arcade.color.BLACK)
             self.camera.use()
             self.game_location.draw()
             self.sprite_lst.draw()
             arcade.draw_lbwh_rectangle_filled(0, 0, self.width, self.height, (0, 0, 0, 100))
-            # for i in self.particles:
-            #     i.draw()
             self.player.draw()
 
 
@@ -124,7 +122,6 @@ class MainWindow(arcade.Window):
                                              (125, 125, 125), (0, 0, 255), 50)
                                     ]
                 self.background_texture = arcade.load_texture(get_path(f"PauseBackground{randint(1, 3)}.jpg"))
-                print("Changed")
                 self.was = self.status
 
             # set_background(self.backround_image, self.width, self.height)
@@ -184,15 +181,6 @@ class MainWindow(arcade.Window):
                 self.player.update(self.keys, delta_time)
                 self.game_location.update(delta_time)
                 move_camera_to_player(self, 0.1)
-
-                # particles_copy = self.particles.copy()
-                # for e in particles_copy:
-                #     e.update(delta_time)
-                #
-                # for e in particles_copy:
-                #     if e.can_reap():
-                #         self.particles.remove(e)
-
 
         except AttributeError as e:
             print(e)

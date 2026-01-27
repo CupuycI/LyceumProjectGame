@@ -1,6 +1,6 @@
 import os
 import sys
-from random import randint, uniform, choice
+from random import uniform, choice
 
 import arcade
 import math
@@ -89,7 +89,7 @@ def get_evidence_name(evidence):
     if hasattr(evidence, "evidence"):
         return evidence.evidence.replace("_", " ")
 
-    return str(evidence.texture.file_path).split("/")[-1].split(".")[0].lower().replace("_", " ")
+    return str(evidence.texture.file_path).split("\\")[-1].split(".")[0].lower().replace("_", " ")
 
 
 def draw_possibility_interaction(obj):
@@ -132,13 +132,10 @@ def check_doors(sprite, location):
         if sprite.collides_with_sprite(i):
             i: arcade.Sprite
             if len(i.textures) < 2:
-                # i.append_texture(location.opened_door_texture_2)
                 i.append_texture(location.opened_door_texture)
                 i.set_texture(-1)
-                # i.sync_hit_box_to_texture()
                 i: arcade.Sprite
                 i.sync_hit_box_to_texture()
-                print(i.hit_box.get_adjusted_points(), i.center_x, i.width / 2)
                 i.center_x -= location.opened_door_texture.width * 1.05
                 i.center_y -= location.opened_door_texture.height / 2.5
 
@@ -147,7 +144,6 @@ def check_doors(sprite, location):
             if len(i.textures) >= 2:
                 i.set_texture(0)
                 i.sync_hit_box_to_texture()
-                print(True)
                 i.textures = i.textures[:-1]
                 i.center_x += location.opened_door_texture.width * 1.05
                 i.center_y += location.opened_door_texture.height / 2.5
@@ -165,6 +161,7 @@ SPARK_TEX = [
 def make_wall_particles(x, y, count=80):
     return Emitter(center_xy=(x, y), emit_controller=EmitBurst(count),
                    particle_factory=lambda e: FadeParticle(
-        filename_or_texture=choice(SPARK_TEX), change_xy=arcade.math.rand_in_rect(arcade.Rect(*arcade.LBWH(-2, -2, 2, 2))),
+        filename_or_texture=choice(SPARK_TEX),
+                       change_xy=arcade.math.rand_in_rect(arcade.Rect(*arcade.LBWH(-2, -2, 2, 2))),
         lifetime=uniform(0.2, 0.3), start_alpha=255, end_alpha=0, scale=uniform(0.6, 1))
                    )
