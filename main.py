@@ -138,10 +138,11 @@ class MainWindow(arcade.Window):
             font_size = 20
             text1 = arcade.Text(f"Зафиксировано улик:           "
                                 f"{len(self.player.collected_evidence.sprite_list)}/"
-                                f"{len(self.game_location.evidence_sprites.sprite_list) +
+                                f"{max(len(self.game_location.evidence_sprites.sprite_list) +
                                    len([i for i in self.player.collected_evidence.sprite_list
-                                        if "ClothPart" in str(i.texture.file_path)]) +
-                                   len(self.game_location.handprints.sprite_list)}",
+                                        if "clothpart" in str(i.texture.file_path).lower()]) +
+                                   len(self.game_location.handprints.sprite_list),
+                                       len(self.player.collected_evidence.sprite_list))}",
                                 250, self.height - 300, font_size=font_size)
             text2 = arcade.Text(f"Преступник:                            "
                                 f"{'Ликвидирован' if self.game_location.criminal_is_spawned and

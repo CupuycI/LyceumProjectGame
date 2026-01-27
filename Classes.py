@@ -572,6 +572,44 @@ class Location:
         end_y = start_y + distance * sin_
         return end_x, end_y
 
+    def is_object_in_light(self, sprite):
+        detective = self.wd.player
+        half_w = sprite.width / 2
+        half_h = sprite.height / 2
+        corners = [(sprite.center_x - half_w, sprite.center_y - half_h),
+                   (sprite.center_x + half_w, sprite.center_y - half_h),
+                   (sprite.center_x - half_w, sprite.center_y + half_h),
+                   (sprite.center_x + half_w, sprite.center_y + half_h),
+                   (sprite.center_x, sprite.center_y)]
+
+        for cx, cy in corners:
+            dist = get_distance(detective.center_x, detective.center_y, cx, cy)
+            if dist <= 200:
+                if dist == 0:
+                    return True
+
+                try:
+                    v0 = [self.points2[1][0] - detective.center_x, self.points2[1][1] - detective.center_y]
+                    v1 = [self.points2[2][0] - detective.center_x, self.points2[2][1] - detective.center_y]
+                    v2 = [cx - detective.center_x, cy - detective.center_y]
+
+                    dot00 = v0[0] * v0[0] + v0[1] * v0[1]
+                    dot01 = v0[0] * v1[0] + v0[1] * v1[1]
+                    dot02 = v0[0] * v2[0] + v0[1] * v2[1]
+                    dot11 = v1[0] * v1[0] + v1[1] * v1[1]
+                    dot12 = v1[0] * v2[0] + v1[1] * v2[1]
+
+                    inv_denom = 1 / (dot00 * dot11 - dot01 * dot01)
+                    u = (dot11 * dot02 - dot01 * dot12) * inv_denom
+                    v = (dot00 * dot12 - dot01 * dot02) * inv_denom
+
+                    if (u >= 0) and (v >= 0) and (u + v <= 1):
+                        return True
+
+                except ZeroDivisionError:
+                    pass
+        return False
+
     def create_lights(self, fragments_num=2):
         self.light_layer = LightLayer(self.wd.width, self.wd.height)
 
@@ -625,12 +663,10 @@ class Location:
             if self.wd.player.item == self.wd.player.items[1]: # UVFlashlight
                 self.handprints.draw()
 
-            self.criminal_list.draw()
+            if self.criminal_is_spawned and self.is_object_in_light(self.criminal):
+                self.criminal_list.draw()
 
         self.light_layer.draw(ambient_color=(10, 10, 10))
-        if self.criminal_is_spawned:
-            self.criminal.draw_hit_box(color=(192, 255, 0))
-            self.criminal.draw()
 
         self.evidence_sprites.draw_hit_boxes((192, 255, 0))
         for i in self.particles:
