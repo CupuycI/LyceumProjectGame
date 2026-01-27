@@ -198,12 +198,14 @@ class MainWindow(arcade.Window):
                 pass
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
-        if self.status == "Game" and self.player.item == self.player.items[0]:
-            x += self.camera.position.x - self.center_x
-            bullet = Bullet(self.player.center_x, self.player.center_y, 600, x, y)
-            self.game_location.bullets_sprites.append(bullet)
-            self.game_location.bullets.append(bullet)
-            # self.particles.append(make_wall_particles(self.player.center_x, self.player.center_y))
+        if self.status == "Game":
+            if self.player.item == self.player.items[0]:
+                x += self.camera.position.x - self.center_x
+                bullet = Bullet(self.player.center_x, self.player.center_y, 600, x, y)
+                self.game_location.bullets_sprites.append(bullet)
+                self.game_location.bullets.append(bullet)
+            return
+
         if button == arcade.MOUSE_BUTTON_LEFT:
             for btn in self.buttons_lst:
                 btn.on_press()
