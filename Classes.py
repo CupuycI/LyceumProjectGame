@@ -386,13 +386,11 @@ class Detective(arcade.Sprite):
                     self.center_x += speed * delta_time
                 check_doors(self, self.location)
 
-                print("#")
                 check_collisions(self, self.location.spawns_objects, speed, delta_time)
                 check_collisions(self, self.location.objects, speed, delta_time)
                 check_collisions(self, self.location.interior, speed, delta_time)
                 check_collisions(self, self.location.entries, speed, delta_time)
 
-                print(True)
                 self.sprite_2.center_x = self.center_x
                 self.sprite_2.center_y = self.center_y
 

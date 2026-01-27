@@ -123,8 +123,13 @@ class MainWindow(arcade.Window):
                                              "На базу", (lambda: change_status(self, "MainMenu")),
                                              (125, 125, 125), (0, 0, 255), 50)
                                     ]
+                self.background_texture = arcade.load_texture(get_path(f"PauseBackground{randint(1, 3)}.jpg"))
+                print("Changed")
                 self.was = self.status
 
+            # set_background(self.backround_image, self.width, self.height)
+            arcade.draw_texture_rect(self.background_texture,
+                                     arcade.Rect(*arcade.LBWH(0, 0, self.width, self.height)))
             for btn in self.buttons_lst:
                 btn.draw()
 
