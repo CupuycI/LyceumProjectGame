@@ -1,0 +1,22 @@
+Start Menu represents a menu with buttons(my own class MyButton) "Играть", "Настройки", "Выход" and background image
+generated using YandexAlice.
+
+End Menu represents a menu with info about collected evidence, status of player, status of criminal, size of game,
+difficulty level.
+
+Calculation and output of the game results were implemented in the End Menu.
+
+Sprites were used in the Detective, Criminal, Location classes.
+
+Collisions were implemented in the class Location.
+
+Animations were implemented in the class Detective(animation of death) and in the class
+Criminal(animation of death and surrender)
+
+Also, class Location implements procedural level generation.
+
+Camera is used in the class Detective when player crosses the middle of the screen width.
+
+Particles appear when bullet collides with walls.
+
+I created my own physics engine because Arcade's physics engine doesn't meet my requirements

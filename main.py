@@ -105,9 +105,7 @@ class MainWindow(arcade.Window):
             self.camera.use()
             self.game_location.draw()
             self.sprite_lst.draw()
-            arcade.draw_lbwh_rectangle_filled(0, 0, self.width, self.height, (0, 0, 0, 100))
             self.player.draw()
-
 
         elif self.status == "Pause":
             if self.was != self.status:

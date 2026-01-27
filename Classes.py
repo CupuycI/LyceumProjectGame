@@ -69,10 +69,6 @@ class Criminal(arcade.Sprite):
         self.hit_timer = 0
         self.MAX_HIDE_COOLDOWN = 30
         self.MIN_HIDE_COOLDOWN = 10
-        self.MAX_HIDE_DURATION = 40
-        self.MIN_HIDE_DURATION = 5
-        self.hide_cooldown_timer = 0
-        self.hide_timer = 0
         self.animation_textures = []
         for i in range(2):
             self.animation_textures.append(arcade.load_texture(get_path(f'Criminal{i}.png')))
@@ -129,6 +125,7 @@ class Criminal(arcade.Sprite):
     def surrender(self):
         self.main_x, self.main_y = self.location.police_car.center_x, self.location.police_car.center_y
         self.set_texture(2)
+        self.status = "surrended"
 
     def update(self, delta_time: float = 1 / 60, *args, **kwargs) -> None:
         if self.hp <= 0:
@@ -144,7 +141,7 @@ class Criminal(arcade.Sprite):
             self.surrender()
             return
         self.update_targets()
-        self.update_timers()
+        self.update_timers(delta_time)
         if self.collides_with_sprite(self.wd.player) and self.texture == self.textures[1]:
             if self.hit_timer >= self.HIT_COOLDOWN:
                 self.hit_timer = 0
@@ -171,19 +168,12 @@ class Criminal(arcade.Sprite):
         check_collisions(self, self.location.interior, abs(self.change_y), delta_time)
         self.update_angle()
 
-    def update_timers(self):
-        if self.status == "hiding":
-            self.hide_timer += 1
-
-        else:
-            self.hide_cooldown_timer += 1
-            self.hide_timer = 0
-
+    def update_timers(self, delta_time=1/60):
         if self.status == "attacking":
-            self.attack_timer += 1
+            self.attack_timer += delta_time
 
         else:
-            self.attack_cooldown_timer += 1
+            self.attack_cooldown_timer += delta_time
             self.attack_timer = 0
 
     def update_targets(self):
@@ -192,26 +182,28 @@ class Criminal(arcade.Sprite):
             self.status = "escaping"
 
         elif (self.type["Fear"] < self.type["Rage"] > random() and self.attack_cooldown_timer >= self.MIN_ATTACK_COOLDOWN or
-              self.attack_cooldown_timer >= self.MAX_ATTACK_COOLDOWN):
+              self.attack_cooldown_timer >= self.MAX_ATTACK_COOLDOWN and self.attack_timer <=
+              randint(self.MIN_ATTACK_DURATION, self.MAX_ATTACK_DURATION)):
             self.attack()
             self.status = "attacking"
 
         else:
             self.hide()
             self.status = "hiding"
-            self.hide_cooldown_timer = 0
 
     def draw(self):
         try:
             arcade.draw_circle_filled(self.t_x, self.t_y, 5, (0, 0, 255))
             arcade.draw_circle_filled(self.main_x, self.main_y, 5, (0, 255, 0))
+            for i in self.location.points:
+                arcade.draw_circle_filled(i[0], i[1], 5, (255, 0, 0))
 
         except Exception as e:
             print(e)
 
     def move_if_collides(self, delta_time: float = 1/60):
         tmp = Criminal(self.wd, self.center_x, self.center_y, self.location)
-        k = randint(1, 12)
+        k = randint(1, 5)
         tmp_x = self.change_x * delta_time * k
         tmp_y = self.change_y * delta_time * k
         for i in product([self.center_x - tmp_x, self.center_x, self.center_x + tmp_x],
@@ -638,6 +630,7 @@ class Location:
         self.light_layer.draw(ambient_color=(10, 10, 10))
         if self.criminal_is_spawned:
             self.criminal.draw_hit_box(color=(192, 255, 0))
+            self.criminal.draw()
 
         self.evidence_sprites.draw_hit_boxes((192, 255, 0))
         for i in self.particles:
