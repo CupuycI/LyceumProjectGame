@@ -1,4 +1,5 @@
 import json
+import time
 from itertools import product
 from math import atan2
 from random import random, randint
@@ -331,6 +332,7 @@ class Detective(arcade.Sprite):
                 self.sync_hit_box_to_texture()
 
             if arcade.key.E in keys:
+                was_len = len(self.collected_evidence)
                 for i in self.sprite_2.collides_with_list(self.location.evidence_sprites):
                     if i not in self.collected_evidence:
                         name = get_evidence_name(i)
@@ -360,7 +362,15 @@ class Detective(arcade.Sprite):
 
                 if self.sprite_2.collides_with_list(self.location.exits):
                     change_status(self.wd, "GameEnd")
+                    arcade.load_sound(get_path("CarStart.mp3")).play(volume=self.wd.ambient_volume)
+                    time.sleep(2)
                     return
+
+                if was_len != len(self.collected_evidence):
+                    arcade.load_sound(get_path("collect.mp3")).play(volume=self.wd.ambient_volume)
+
+            if arcade.key.R in keys:
+                arcade.load_sound(get_path("reloading.mp3")).play(volume=self.wd.ambient_volume)
 
             speed = self.speed / math.sqrt(2) if len(keys) > 1 else self.speed
             for key in keys:

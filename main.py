@@ -1,5 +1,7 @@
 import arcade.color
 
+from arcade.gui import UISlider, UIManager, UIBoxLayout, UILabel
+from arcade.gui.widgets.layout import UIAnchorLayout
 from Classes import *
 
 SCREEN_WIDTH = 1920
@@ -10,25 +12,82 @@ class MainWindow(arcade.Window):
     def __init__(self, width, height, title):
         super().__init__(width, height, title, resizable=True, fullscreen=True)
         arcade.set_background_color(arcade.color.GRAY_BLUE)
+
         self.buttons_lst = []
         self.status = "MainMenu"
         self.was = ""
         self.level = ""
         self.game_size = ""
+        self.ambient_volume = 0.7
+        self.music_volume = 0.7
+        self.settings_path = os.path.join(get_appdata_path("RUC"), "settings.txt")
+        try:
+            with open(self.settings_path, "r") as f:
+                lines = [i.strip() for i in f.readlines()]
+                self.ambient_volume = float(lines[0])
+                self.music_volume = float(lines[1])
+
+        except FileNotFoundError:
+            with open(self.settings_path, "w") as f:
+                print(self.ambient_volume, file=f)
+                print(self.music_volume, file=f)
+
+        self.manager = UIManager()
+        self.manager.enable()
+        font_size = 42
+        size = 3
+        self.anchor_layout = UIAnchorLayout()
+        self.volume_box = UIBoxLayout(align="center", space_between=70)
+        self.ambient_volume_box = UIBoxLayout(vertical=False)
+        self.ambient_volume_label = UILabel("Громкость окружения  ", font_size=font_size)
+        self.ambient_volume_slider = UISlider(value=self.ambient_volume * 100, width=300 * size, height=25 * size)
+        self.ambient_volume_slider.on_change = self.change_ambient_volume
+        self.ambient_volume_box.add(self.ambient_volume_label)
+        self.ambient_volume_box.add(self.ambient_volume_slider)
+        self.music_volume_box = UIBoxLayout(vertical=False)
+        self.music_volume_label = UILabel("Громкость музыки  ", font_size=font_size)
+        self.music_volume_slider = UISlider(value=self.music_volume * 100, width=300 * size, height=25 * size)
+        self.music_volume_slider.on_change = lambda value: self.change_music_volume(value)
+        self.music_volume_box.add(self.music_volume_label)
+        self.music_volume_box.add(self.music_volume_slider)
+        self.volume_box.add(self.ambient_volume_box)
+        self.volume_box.add(self.music_volume_box)
+        self.anchor_layout.add(self.volume_box)
+        self.manager.add(self.anchor_layout)
+
+        self.current_music = arcade.load_sound(get_path("MainMenuBackground.mp3"))
+        self.background_player = self.current_music.play(volume=self.music_volume)
+
+    def change_music_volume(self, *rubbish):
+        try:
+            self.music_volume = self.music_volume_slider.value / 100
+            self.current_music.set_volume(self.music_volume, self.background_player)
+
+        except AttributeError:
+            pass
+
+    def change_ambient_volume(self, *rubbish):
+        self.ambient_volume = self.ambient_volume_slider.value / 100
 
     def on_draw(self):
         self.clear()
         self.default_camera.use()
+        if "Settings" not in self.status and "Settings" in self.was:
+            self.manager.disable()
+        if self.was == "Game" and self.status != "Game":
+            play_music(self, "MainMenuBackground.mp3")
+        elif self.status == "Game":
+            self.current_music.stop(self.background_player)
         if self.status == "MainMenu":
             if self.was != self.status:
                 self.buttons_lst = [MyButton(self, SCREEN_WIDTH / 2.3, SCREEN_HEIGHT / 1.55,
                                              "На вызов", (lambda: change_status(self, "ChoosingLevel")),
                                              (125, 125, 125), (255, 0, 0), 50),
                                     MyButton(self, SCREEN_WIDTH / 2.35, SCREEN_HEIGHT / 2,
-                                             "Настройки", (lambda: change_status(self, "Settings")),
+                                             "Настройки", (lambda: change_status(self, "MainMenuSettings")),
                                              (125, 125, 125), (255, 0, 0), 50),
                                     MyButton(self, SCREEN_WIDTH / 2.2, SCREEN_HEIGHT / 2.7,
-                                             "Выход", (lambda: self.close()),
+                                             "Выход", (lambda: self.on_close()),
                                              (125, 125, 125), (255, 0, 0), 50)
                                     ]
                 self.was = self.status
@@ -113,7 +172,7 @@ class MainWindow(arcade.Window):
                                              "Продолжить", (lambda: change_status(self, "Game")),
                                              (125, 125, 125), (255, 0, 0), 50),
                                     MyButton(self, SCREEN_WIDTH / 2.35, SCREEN_HEIGHT / 2,
-                                             "Настройки", (lambda: change_status(self, "Settings")),
+                                             "Настройки", (lambda: change_status(self, "PauseSettings")),
                                              (125, 125, 125), (0, 0, 255), 50),
                                     MyButton(self, SCREEN_WIDTH / 2.23, SCREEN_HEIGHT / 2.7,
                                              "На базу", (lambda: change_status(self, "MainMenu")),
@@ -122,7 +181,6 @@ class MainWindow(arcade.Window):
                 self.background_texture = arcade.load_texture(get_path(f"PauseBackground{randint(1, 3)}.jpg"))
                 self.was = self.status
 
-            # set_background(self.backround_image, self.width, self.height)
             arcade.draw_texture_rect(self.background_texture,
                                      arcade.Rect(*arcade.LBWH(0, 0, self.width, self.height)))
             for btn in self.buttons_lst:
@@ -173,6 +231,23 @@ class MainWindow(arcade.Window):
             for btn in self.buttons_lst:
                 btn.draw()
 
+        elif self.status in ["PauseSettings", "MainMenuSettings"]:
+            if self.was != self.status:
+                self.buttons_lst =[MyButton(self, SCREEN_WIDTH / 25, SCREEN_HEIGHT / 1.25, "Назад",
+                                             (lambda: change_status(self,
+                                                                    self.status.replace("Settings", ""))),
+                                             (125, 125, 125), (30, 30, 255), 30)]
+                self.manager.enable()
+                self.background_texture = arcade.load_texture(get_path("SettingsBackground.jpg"))
+                self.was = self.status
+
+
+            arcade.draw_texture_rect(self.background_texture,
+                                     arcade.Rect(*arcade.LBWH(0, 0, self.width, self.height)))
+            self.manager.draw()
+            for btn in self.buttons_lst:
+                btn.draw()
+
 
     def on_update(self, delta_time: float):
         try:
@@ -182,7 +257,7 @@ class MainWindow(arcade.Window):
                 move_camera_to_player(self, 0.1)
 
         except AttributeError as e:
-            print(e)
+            pass
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
         for btn in self.buttons_lst:
@@ -203,6 +278,7 @@ class MainWindow(arcade.Window):
                 bullet = Bullet(self.player.center_x, self.player.center_y, 600, x, y)
                 self.game_location.bullets_sprites.append(bullet)
                 self.game_location.bullets.append(bullet)
+                arcade.load_sound(get_path("shot.mp3")).play(volume=self.ambient_volume)
             return
 
         if button == arcade.MOUSE_BUTTON_LEFT:
@@ -222,6 +298,13 @@ class MainWindow(arcade.Window):
             return
 
         del self.keys[self.keys.index(symbol)]
+
+    def on_close(self) -> None:
+        with open(self.settings_path, "w") as f:
+            print(self.ambient_volume, file=f)
+            print(self.music_volume, file=f)
+
+        self.close()
 
 
 def setup_game(width, height, title):

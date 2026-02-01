@@ -16,6 +16,21 @@ def get_angle_between(angle1, angle2):
     diff = normalize_angle(angle1) - normalize_angle(angle2)
     return min(diff, math.pi * 2 - diff)
 
+
+def get_appdata_path(appname):
+    if sys.platform == "win32":
+        path = os.path.join(os.environ['APPDATA'], appname)
+    elif sys.platform == "darwin":
+        path = os.path.join(os.path.expanduser("~"), "Library", "Application Support", appname)
+    else:
+        path = os.path.join(os.path.expanduser("~"), ".local", "share", appname)
+
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    return path
+
+
 def get_path(file_name):
     directory = ""
     if file_name.endswith(".jpg") or file_name.endswith(".png"):
@@ -133,6 +148,8 @@ def check_doors(sprite, location):
             i: arcade.Sprite
             if len(i.textures) < 2:
                 i.append_texture(location.opened_door_texture)
+                if i.texture != i.textures[-1]:
+                    arcade.load_sound(get_path("Door.mp3")).play(volume=location.wd.ambient_volume)
                 i.set_texture(-1)
                 i: arcade.Sprite
                 i.sync_hit_box_to_texture()
@@ -165,3 +182,9 @@ def make_wall_particles(x, y, count=80):
                        change_xy=arcade.math.rand_in_rect(arcade.Rect(*arcade.LBWH(-2, -2, 2, 2))),
         lifetime=uniform(0.2, 0.3), start_alpha=255, end_alpha=0, scale=uniform(0.6, 1))
                    )
+
+
+def play_music(wd, file_name):
+    wd.current_music.stop(wd.background_player)
+    wd.current_music = arcade.load_sound(get_path(file_name))
+    wd.background_player = wd.current_music.play(volume=wd.music_volume, loop=True)
