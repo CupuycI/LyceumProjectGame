@@ -58,6 +58,8 @@ class MainWindow(arcade.Window):
         self.current_music = arcade.load_sound(get_path("MainMenuBackground.mp3"))
         self.background_player = self.current_music.play(volume=self.music_volume)
 
+        self.keys = []
+
     def change_music_volume(self, *rubbish):
         try:
             self.music_volume = self.music_volume_slider.value / 100
@@ -90,11 +92,8 @@ class MainWindow(arcade.Window):
                                              "Выход", (lambda: self.on_close()),
                                              (125, 125, 125), (255, 0, 0), 50)
                                     ]
-                self.was = self.status
 
             set_background("MainMenuBackground.jpg", SCREEN_WIDTH, SCREEN_HEIGHT)
-            for btn in self.buttons_lst:
-                btn.draw()
 
         elif self.status == "ChoosingLevel":
             if self.was != self.status:
@@ -110,7 +109,6 @@ class MainWindow(arcade.Window):
                                     MyButton(self, SCREEN_WIDTH / 25, SCREEN_HEIGHT / 1.25, "Назад",
                                              (lambda: change_status(self, "MainMenu")),
                                              (125, 125, 125), (30, 30, 255), 30)]
-                self.was = self.status
 
             set_background("ChooseLevelBackground.jpg", SCREEN_WIDTH, SCREEN_HEIGHT)
             text = arcade.Text("Уровень сложности", SCREEN_WIDTH / 4.5, SCREEN_HEIGHT / 1.4, (255, 255, 255),
@@ -119,8 +117,6 @@ class MainWindow(arcade.Window):
             set_image("ChooseEasyLevel.jpg", SCREEN_WIDTH / 6, SCREEN_HEIGHT / 2.25)
             set_image("ChooseMiddleLevel.jpg", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2.25)
             set_image("ChooseHardLevel.jpg", SCREEN_WIDTH / 1.2, SCREEN_HEIGHT / 2.25)
-            for btn in self.buttons_lst:
-                btn.draw()
 
         elif self.status == "ChoosingSize":
             if self.was != self.status:
@@ -136,7 +132,6 @@ class MainWindow(arcade.Window):
                                     MyButton(self, SCREEN_WIDTH / 1.275, SCREEN_HEIGHT / 6, "Большой",
                                              (lambda: change_status(self, "Game", "Big")),
                                               (125, 125, 125), (255, 30, 30), 40)]
-                self.was = self.status
 
             set_background("ChooseLevelBackground.jpg", SCREEN_WIDTH, SCREEN_HEIGHT)
             text = arcade.Text("Размер локации", SCREEN_WIDTH / 3.75, SCREEN_HEIGHT / 1.4, (255, 255, 255),
@@ -145,20 +140,16 @@ class MainWindow(arcade.Window):
             set_image("ChooseSmallSize.jpg", SCREEN_WIDTH / 6, SCREEN_HEIGHT / 2.25)
             set_image("ChooseMiddleSize.jpg", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2.25)
             set_image("ChooseBigSize.jpg", SCREEN_WIDTH / 1.2, SCREEN_HEIGHT / 2.25)
-            for btn in self.buttons_lst:
-                btn.draw()
 
         elif self.status == "Game":
             if self.was != "Game":
-                self.keys = []
+                self.keys.clear()
                 if self.was != "Pause":
                     self.game_location = Location(self)
                     self.player = Detective(self, 200, self.height / 2, self.game_location)
                     self.sprite_lst = arcade.SpriteList()
                     self.sprite_lst.append(self.player)
                     self.camera = arcade.Camera2D()
-
-                self.was = self.status
 
             self.clear(color=arcade.color.BLACK)
             self.camera.use()
@@ -179,16 +170,12 @@ class MainWindow(arcade.Window):
                                              (125, 125, 125), (0, 0, 255), 50)
                                     ]
                 self.background_texture = arcade.load_texture(get_path(f"PauseBackground{randint(1, 3)}.jpg"))
-                self.was = self.status
 
             arcade.draw_texture_rect(self.background_texture,
                                      arcade.Rect(*arcade.LBWH(0, 0, self.width, self.height)))
-            for btn in self.buttons_lst:
-                btn.draw()
 
         elif self.status == "GameEnd":
             if self.was != self.status:
-                self.was = self.status
                 self.buttons_lst = [MyButton(self, SCREEN_WIDTH / 25, SCREEN_HEIGHT / 1.25, "В меню",
                                              (lambda: change_status(self, "MainMenu")),
                                              (125, 125, 125), (30, 30, 255), 30)]
@@ -227,10 +214,6 @@ class MainWindow(arcade.Window):
             text4.draw()
             text5.draw()
 
-
-            for btn in self.buttons_lst:
-                btn.draw()
-
         elif self.status in ["PauseSettings", "MainMenuSettings"]:
             if self.was != self.status:
                 self.buttons_lst =[MyButton(self, SCREEN_WIDTH / 25, SCREEN_HEIGHT / 1.25, "Назад",
@@ -239,15 +222,20 @@ class MainWindow(arcade.Window):
                                              (125, 125, 125), (30, 30, 255), 30)]
                 self.manager.enable()
                 self.background_texture = arcade.load_texture(get_path("SettingsBackground.jpg"))
-                self.was = self.status
-
 
             arcade.draw_texture_rect(self.background_texture,
                                      arcade.Rect(*arcade.LBWH(0, 0, self.width, self.height)))
+            arcade.draw_rect_filled(arcade.Rect(*arcade.LBWH(self.volume_box.left, self.volume_box.bottom,
+                                                             self.volume_box.width, self.volume_box.height)),
+                                    (29, 29, 29, 120))
             self.manager.draw()
+
+        if self.status != "Game":
             for btn in self.buttons_lst:
                 btn.draw()
 
+        if self.was != self.status:
+            self.was = self.status
 
     def on_update(self, delta_time: float):
         try:
@@ -256,7 +244,7 @@ class MainWindow(arcade.Window):
                 self.game_location.update(delta_time)
                 move_camera_to_player(self, 0.1)
 
-        except AttributeError as e:
+        except AttributeError:
             pass
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
