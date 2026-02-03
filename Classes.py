@@ -126,7 +126,7 @@ class Criminal(arcade.Sprite):
     def surrender(self):
         self.main_x, self.main_y = self.location.police_car.center_x, self.location.police_car.center_y
         self.set_texture(2)
-        self.status = "surrended"
+        self.status = "surrendered"
 
     def update(self, delta_time: float = 1 / 60, *args, **kwargs) -> None:
         if self.hp <= 0:
@@ -138,8 +138,10 @@ class Criminal(arcade.Sprite):
                     self.animation_timer += delta_time
             return
 
-        elif self.hp <= 20 or self.type["Fear"] > 0.8 and self.type["Cool-headedness"] < 0.5:
+        elif ((self.hp <= 20 or self.type["Fear"] > 0.8 and self.type["Cool-headedness"] < 0.5)
+              and self.status not in ["arrested", "surrendered"]):
             self.surrender()
+        if self.status in ["arrested", "surrendered"]:
             return
         self.update_targets()
         self.update_timers(delta_time)
@@ -226,7 +228,7 @@ class Criminal(arcade.Sprite):
 
 
 class Detective(arcade.Sprite):
-    def __init__(self, wd: arcade.Window, x, y, location, hp=100, speed=100):
+    def __init__(self, wd: arcade.Window, x, y, location, hp=100, speed=100, max_ammo=8):
         super().__init__()
         self.wd = wd
         self.x = x
@@ -255,6 +257,17 @@ class Detective(arcade.Sprite):
         self.DIE_COOLDOWN = 1
         self.die_timer = 0
 
+        self.ammo = max_ammo
+        self.max_ammo = max_ammo
+        self.RELOADING_DURATION = 0.5
+        self.reloading_timer = 0
+        self.is_reloading = False
+
+    def can_arrest(self) -> bool:
+        return (self.item == self.items[2] and self.location.criminal_is_spawned and
+                self.location.criminal.status == "surrendered" and
+                self.sprite_2.collides_with_sprite(self.location.criminal))
+
     def draw(self):
         draw_possibility_interaction(self)
         x = self.wd.width - self.max_hp - 60 if self.center_x <= self.wd.width / 2 else self.wd.width - self.max_hp - 60 + (self.center_x - self.wd.width / 2)
@@ -263,6 +276,9 @@ class Detective(arcade.Sprite):
         hp_color = arcade.color.GREEN if self.hp >= self.max_hp / 4 * 3 else (
             arcade.color.YELLOW) if self.hp >= self.max_hp / 2 else arcade.color.RED
         arcade.draw_lbwh_rectangle_filled(x + 2, 13, self.hp, 45, hp_color)
+        ammo_text = arcade.Text(f"{self.ammo}/{self.max_ammo}", x - 30, 13)
+        ammo_text.draw()
+
         x = 60 if self.center_x <= self.wd.width / 2 else self.center_x - self.wd.width / 2 + 60
         for i in range(1, 5):
             bottom = 40
@@ -288,6 +304,12 @@ class Detective(arcade.Sprite):
                 evidence_text.draw()
 
     def update(self, keys: list, delta_time=1/60):
+        if self.is_reloading:
+            self.reloading_timer += delta_time
+            if self.reloading_timer >= self.RELOADING_DURATION:
+                self.reloading_timer = 0
+                self.is_reloading = False
+                self.ammo = self.max_ammo
         for i in self.newly_collected_evidence:
             i[0] += delta_time
         if self.hp <= 0 and not self.is_dead:
@@ -333,6 +355,8 @@ class Detective(arcade.Sprite):
 
             if arcade.key.E in keys:
                 was_len = len(self.collected_evidence)
+                if self.can_arrest():
+                    self.location.criminal.status = "arrested"
                 for i in self.sprite_2.collides_with_list(self.location.evidence_sprites):
                     if i not in self.collected_evidence:
                         name = get_evidence_name(i)
@@ -370,7 +394,9 @@ class Detective(arcade.Sprite):
                     arcade.load_sound(get_path("collect.mp3")).play(volume=self.wd.ambient_volume)
 
             if arcade.key.R in keys:
-                arcade.load_sound(get_path("reloading.mp3")).play(volume=self.wd.ambient_volume)
+                if not self.is_reloading:
+                    arcade.load_sound(get_path("reloading.mp3")).play(volume=self.wd.ambient_volume)
+                    self.is_reloading = True
 
             speed = self.speed / math.sqrt(2) if len(keys) > 1 else self.speed
             for key in keys:
@@ -429,7 +455,6 @@ class Location:
         self.doors_sprites = arcade.SpriteList()
         self.criminal_list = arcade.SpriteList()
         self.create_location()
-        self.bullets = []
         self.bullets_sprites = arcade.SpriteList()
         self.opened_door_texture = arcade.load_texture(get_path("OpenedDoor.png"))
         self.opened_door_texture_2 = arcade.load_texture(get_path("OpenedDoor2.png"))
@@ -599,8 +624,8 @@ class Location:
                     return True
 
                 try:
-                    v0 = [self.points2[1][0] - detective.center_x, self.points2[1][1] - detective.center_y]
-                    v1 = [self.points2[2][0] - detective.center_x, self.points2[2][1] - detective.center_y]
+                    v0 = [self.left_hit_x - detective.center_x, self.left_hit_y - detective.center_y]
+                    v1 = [self.right_hit_x - detective.center_x, self.right_hit_y - detective.center_y]
                     v2 = [cx - detective.center_x, cy - detective.center_y]
 
                     dot00 = v0[0] * v0[0] + v0[1] * v0[1]
@@ -683,7 +708,6 @@ class Location:
             i.draw()
 
         self.bullets_sprites.draw()
-
 
     def update(self, delta_time):
         for bullet in self.bullets_sprites:

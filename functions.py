@@ -115,11 +115,16 @@ def draw_possibility_interaction(obj):
             set_image(get_path("Interaction.png"), target.center_x + sprite.width / 2,
                       target.center_y + sprite.height / 2)
 
-    if obj.item == "UVFlashlight":
+    if obj.item == obj.items[1]:
         for target in sprite.collides_with_list(location.handprints):
             if target not in obj.collected_evidence and not hasattr(target, "evidence"):
                 set_image(get_path("Interaction.png"), target.center_x + sprite.width / 2,
                           target.center_y + sprite.height / 2)
+
+    elif obj.can_arrest():
+        set_image(get_path("Interaction.png"), obj.location.criminal.center_x + sprite.width / 2,
+                  obj.location.criminal.center_y + sprite.height / 2)
+
 
     for target in sprite.collides_with_list(location.exits):
         if target not in obj.collected_evidence and not hasattr(target, "evidence"):

@@ -190,10 +190,10 @@ class MainWindow(arcade.Window):
                                        len(self.player.collected_evidence.sprite_list))}",
                                 250, self.height - 300, font_size=font_size)
             text2 = arcade.Text(f"Преступник:                            "
-                                f"{'Ликвидирован' if self.game_location.criminal_is_spawned and
-                                                     self.game_location.criminal.hp <= 0 else 'Сбежал' if
-                                self.game_location.criminal_is_spawned
-                                else 'Не был обнаружен на месте преступления'}", 250, self.height - 350,
+                                f"{'Не был обнаружен' if not self.game_location.criminal_is_spawned else
+                                'Арестован' if self.game_location.criminal.status == "arrested" else
+                                'Ликвидирован' if self.game_location.criminal.hp <= 0 else 'Сбежал'}",
+                                250, self.height - 350,
                                 font_size=font_size)
             text3 = arcade.Text(f"Уровень сложности:             {self.level}", 250, self.height - 400,
                                 font_size=font_size)
@@ -261,11 +261,14 @@ class MainWindow(arcade.Window):
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
         if self.status == "Game":
-            if self.player.item == self.player.items[0]:
+            if self.player.item == self.player.items[0] and not self.player.is_reloading:
+                if self.player.ammo <= 0:
+                    arcade.load_sound(get_path("no_ammo.mp3")).play(volume=self.ambient_volume)
+                    return
                 x += self.camera.position.x - self.center_x
                 bullet = Bullet(self.player.center_x, self.player.center_y, 600, x, y)
                 self.game_location.bullets_sprites.append(bullet)
-                self.game_location.bullets.append(bullet)
+                self.player.ammo = max(0, self.player.ammo - 1)
                 arcade.load_sound(get_path("shot.mp3")).play(volume=self.ambient_volume)
             return
 
