@@ -1,9 +1,10 @@
+import math
 import os
 import sys
-from random import uniform, choice
 
 import arcade
-import math
+
+from random import uniform, choice
 
 from arcade.particles import Emitter, EmitBurst, FadeParticle
 
@@ -58,6 +59,7 @@ def change_status(wd, status, value=False):
 
     elif status == "MainMenu" and wd.level:
         wd.level = ""
+        wd.game_size = ""
         wd.keys.clear()
 
     elif status == "Game" and value:
@@ -85,19 +87,19 @@ def get_speed(x, y, speed, t_x, t_y):
     return speed_x, speed_y
 
 
-def check_collisions(object, lst, speed, delta_time):
-    for sprite in object.collides_with_list(lst):
-        if sprite.center_x < object.center_x:
-            object.center_x += speed * delta_time
+def check_collisions(object_, lst, speed, delta_time):
+    for sprite in object_.collides_with_list(lst):
+        if sprite.center_x < object_.center_x:
+            object_.center_x += speed * delta_time
 
-        elif sprite.center_x > object.center_x:
-            object.center_x -= speed * delta_time
+        elif sprite.center_x > object_.center_x:
+            object_.center_x -= speed * delta_time
 
-        if sprite.center_y < object.center_y:
-            object.center_y += speed * delta_time
+        if sprite.center_y < object_.center_y:
+            object_.center_y += speed * delta_time
 
-        elif sprite.center_y > object.center_y:
-            object.center_y -= speed * delta_time
+        elif sprite.center_y > object_.center_y:
+            object_.center_y -= speed * delta_time
 
 
 def get_evidence_name(evidence):

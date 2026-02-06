@@ -8,6 +8,7 @@ SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1280
 SCREEN_TITLE = "RUC\nResponding to an urgent call"
 
+
 class MainWindow(arcade.Window):
     def __init__(self, width, height, title):
         super().__init__(width, height, title, resizable=True, fullscreen=True)
@@ -131,7 +132,7 @@ class MainWindow(arcade.Window):
                                              (125, 125, 125), (255, 192, 0), 40),
                                     MyButton(self, SCREEN_WIDTH / 1.275, SCREEN_HEIGHT / 6, "Большой",
                                              (lambda: change_status(self, "Game", "Big")),
-                                              (125, 125, 125), (255, 30, 30), 40)]
+                                             (125, 125, 125), (255, 30, 30), 40)]
 
             set_background("ChooseLevelBackground.jpg", SCREEN_WIDTH, SCREEN_HEIGHT)
             text = arcade.Text("Размер локации", SCREEN_WIDTH / 3.75, SCREEN_HEIGHT / 1.4, (255, 255, 255),
@@ -179,6 +180,7 @@ class MainWindow(arcade.Window):
                 self.buttons_lst = [MyButton(self, SCREEN_WIDTH / 25, SCREEN_HEIGHT / 1.25, "В меню",
                                              (lambda: change_status(self, "MainMenu")),
                                              (125, 125, 125), (30, 30, 255), 30)]
+                self.player.is_dead = False
 
             font_size = 20
             text1 = arcade.Text(f"Зафиксировано улик:           "
@@ -191,8 +193,8 @@ class MainWindow(arcade.Window):
                                 250, self.height - 300, font_size=font_size)
             text2 = arcade.Text(f"Преступник:                            "
                                 f"{'Не был обнаружен' if not self.game_location.criminal_is_spawned else
-                                'Арестован' if self.game_location.criminal.status == "arrested" else
-                                'Ликвидирован' if self.game_location.criminal.hp <= 0 else 'Сбежал'}",
+                                'Ликвидирован' if self.game_location.criminal.hp <= 0 else
+                                'Арестован' if self.game_location.criminal.status == "arrested" else 'Сбежал'}",
                                 250, self.height - 350,
                                 font_size=font_size)
             text3 = arcade.Text(f"Уровень сложности:             {self.level}", 250, self.height - 400,
@@ -216,7 +218,7 @@ class MainWindow(arcade.Window):
 
         elif self.status in ["PauseSettings", "MainMenuSettings"]:
             if self.was != self.status:
-                self.buttons_lst =[MyButton(self, SCREEN_WIDTH / 25, SCREEN_HEIGHT / 1.25, "Назад",
+                self.buttons_lst = [MyButton(self, SCREEN_WIDTH / 25, SCREEN_HEIGHT / 1.25, "Назад",
                                              (lambda: change_status(self,
                                                                     self.status.replace("Settings", ""))),
                                              (125, 125, 125), (30, 30, 255), 30)]
