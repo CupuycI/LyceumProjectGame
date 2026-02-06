@@ -460,19 +460,20 @@ class Location:
         self.wd = wd
         self.spawns_objects = arcade.SpriteList()
         self.exits = arcade.SpriteList()
-        self.create_spawn()
         self.objects = arcade.SpriteList()
         self.entries = arcade.SpriteList()
         self.interior = arcade.SpriteList()
         self.floor = arcade.SpriteList()
         self.doors_sprites = arcade.SpriteList()
         self.criminal_list = arcade.SpriteList()
-        self.create_location()
         self.bullets_sprites = arcade.SpriteList()
         self.opened_door_texture = arcade.load_texture(get_path("OpenedDoor.png"))
         self.opened_door_texture_2 = arcade.load_texture(get_path("OpenedDoor2.png"))
+        self.floor_texture = arcade.load_texture(get_path(f"Floor{randint(0, 1)}.png"))
+        self.create_spawn()
+        self.create_location()
         self.time = 0
-        self.criminal_is_spawned = False
+        self.criminal_is_spawned = False if random() <= 0.8 else True
         self.particles = []
         self.light_mode = "soft"
 
@@ -711,18 +712,14 @@ class Location:
             if self.wd.player.item == self.wd.player.items[1]:
                 self.handprints.draw()
 
-            if self.criminal_is_spawned and self.is_object_in_light(self.criminal):
+            if hasattr(self, 'criminal') and self.is_object_in_light(self.criminal):
                 self.criminal_list.draw()
 
         self.light_layer.draw(ambient_color=(10, 10, 10))
-        if self.criminal_is_spawned:
-            self.criminal.draw()
         for i in self.particles:
             i.draw()
 
         self.bullets_sprites.draw()
-        for i in self.doors_points:
-            arcade.draw_circle_filled(i[0], i[1], 5, (192, 255, 0))
 
     def update(self, delta_time):
         for bullet in self.bullets_sprites:
@@ -737,7 +734,7 @@ class Location:
                     except ValueError:
                         pass
 
-                if self.criminal_is_spawned and bullet.collides_with_sprite(self.criminal):
+                if hasattr(self, 'criminal') and bullet.collides_with_sprite(self.criminal):
                     self.criminal.hp -= 20
                     if self.criminal.type["Cool-headedness"] < 0.6:
                         self.criminal.type["Fear"] += 0.2
@@ -754,7 +751,7 @@ class Location:
             if n > 3:
                 self.spawn_criminal()
 
-        else:
+        elif hasattr(self, 'criminal'):
             self.criminal.update(delta_time)
 
         copy_particles = self.particles.copy()
@@ -821,6 +818,7 @@ class Location:
                     self.hiding_poses.append([cur_wd, cur_ht, "H"])
                 continue
 
+            i[2] = f'DSofa{randint(0, 1)}' if 'DSofa' in i[2] else i[2]
             sprite = arcade.Sprite(get_path(i[2] + ".png"), (1, 1), cur_wd, cur_ht)
             self.interior.append(sprite)
 
@@ -858,7 +856,7 @@ class Location:
             elif s == "d":
                 sprite = arcade.Sprite(get_path("HDDoor.png"), (1, 1), width, height)
                 for n in range(-1, 2):
-                    floor = arcade.Sprite(get_path("Floor.png"), (1, 1), width + (wd / 3) * n, height)
+                    floor = arcade.Sprite(self.floor_texture, (1, 1), width + (wd / 3) * n, height)
                     self.floor.append(floor)
                 self.doors_sprites.append(sprite)
                 cur_room[1].append(sprite)
@@ -870,7 +868,7 @@ class Location:
             elif s == "D":
                 sprite = arcade.Sprite(get_path("HUDoor.png"), (1, 1), width, height)
                 for n in range(-1, 2):
-                    floor = arcade.Sprite(get_path("Floor.png"), (1, 1), width + (wd / 3) * n, height)
+                    floor = arcade.Sprite(self.floor_texture, (1, 1), width + (wd / 3) * n, height)
                     self.floor.append(floor)
                 self.doors_sprites.append(sprite)
                 cur_room[1].append(sprite)
@@ -883,7 +881,7 @@ class Location:
                 width -= wd / 3
                 height -= ht
                 for n in range(-2, 2):
-                    floor = arcade.Sprite(get_path("Floor.png"), (1, 1), width, height + ht * n)
+                    floor = arcade.Sprite(self.floor_texture, (1, 1), width, height + ht * n)
                     self.floor.append(floor)
                 sprite = arcade.Sprite(get_path("LDoor.png"), (1, 1), width, height)
                 height += ht
@@ -892,7 +890,7 @@ class Location:
                 continue
 
             else:
-                sprite = arcade.Sprite(get_path("Floor.png"), (1, 1), width, height)
+                sprite = arcade.Sprite(self.floor_texture, (1, 1), width, height)
                 width += sprite.width
                 self.floor.append(sprite)
                 cur_room[0].append(sprite)
