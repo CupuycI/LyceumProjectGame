@@ -275,7 +275,7 @@ class Detective(arcade.Sprite):
         self.is_reloading = False
 
     def can_arrest(self) -> bool:
-        return (self.item == self.items[2] and self.location.criminal_is_spawned and
+        return (self.item == self.items[2] and hasattr(self.location, 'criminal') and
                 self.location.criminal.status not in ["arrested", "attacking"] and
                 self.sprite_2.collides_with_sprite(self.location.criminal) and
                 self.location.criminal.hp > 0)
