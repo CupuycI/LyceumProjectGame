@@ -192,7 +192,7 @@ class MainWindow(arcade.Window):
                                        len(self.player.collected_evidence.sprite_list))}",
                                 250, self.height - 300, font_size=font_size)
             text2 = arcade.Text(f"Преступник:                            "
-                                f"{'Не был обнаружен' if not self.game_location.criminal_is_spawned else
+                                f"{'Не был обнаружен' if not hasattr(self.game_location, 'criminal') else
                                 'Ликвидирован' if self.game_location.criminal.hp <= 0 else
                                 'Арестован' if self.game_location.criminal.status == "arrested" else 'Сбежал'}",
                                 250, self.height - 350,
