@@ -106,7 +106,14 @@ def get_evidence_name(evidence):
     if hasattr(evidence, "evidence"):
         return evidence.evidence.replace("_", " ")
 
-    return str(evidence.texture.file_path).split("\\")[-1].split(".")[0].lower().replace("_", " ")
+    name = str(evidence.texture.file_path)
+    if 'Door' in name:
+        if 'Forced' in name:
+            return 'forced'
+
+        return "isn't locked"
+
+    return name.split("\\")[-1].split(".")[0].lower().replace("_", " ")
 
 
 def draw_possibility_interaction(obj):

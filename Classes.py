@@ -212,8 +212,8 @@ class Criminal(arcade.Sprite):
             arcade.draw_circle_filled(self.t_x, self.t_y, 5, (0, 0, 255))
             arcade.draw_circle_filled(self.main_x, self.main_y, 5, (0, 255, 0))
 
-        except Exception as e:
-            print(e)
+        except (Exception, IndexError):
+            pass
 
     def move_if_collides(self, delta_time: float = 1/60):
         tmp = Criminal(self.wd, self.center_x, self.center_y, self.location)
@@ -392,6 +392,7 @@ class Detective(arcade.Sprite):
                 for i in self.sprite_2.collides_with_list(self.location.entries):
                     if i not in self.collected_evidence:
                         i.append_texture(arcade.load_texture(get_path("OpenedEntry.png")))
+                        self.newly_collected_evidence.append([0, i.center_x, i.center_y, get_evidence_name(i)])
                         i.set_texture(-1)
                         i.sync_hit_box_to_texture()
                         i.center_x -= i.width / 2.75
@@ -887,6 +888,7 @@ class Location:
                 height += ht
                 width += sprite.width
                 self.entries.append(sprite)
+                self.objects.append(sprite)
                 continue
 
             else:

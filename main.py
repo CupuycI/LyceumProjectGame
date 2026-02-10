@@ -186,9 +186,9 @@ class MainWindow(arcade.Window):
             text1 = arcade.Text(f"Зафиксировано улик:           "
                                 f"{len(self.player.collected_evidence.sprite_list)}/"
                                 f"{max(len(self.game_location.evidence_sprites.sprite_list) +
-                                   len([i for i in self.player.collected_evidence.sprite_list
-                                        if "clothpart" in str(i.texture.file_path).lower()]) +
-                                   len(self.game_location.handprints.sprite_list),
+                                       len([i for i in self.player.collected_evidence.sprite_list
+                                            if "clothpart" in str(i.texture.file_path).lower()]) +
+                                       len(self.game_location.handprints.sprite_list) + 1,
                                        len(self.player.collected_evidence.sprite_list))}",
                                 250, self.height - 300, font_size=font_size)
             text2 = arcade.Text(f"Преступник:                            "
